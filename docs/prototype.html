@@ -1,0 +1,1456 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0">
+<title>Prototype — Scheduling App</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Newsreader:ital,wght@0,400;0,500;1,400&family=Inter:wght@400;500;600&display=swap" rel="stylesheet">
+<style>
+  :root {
+    --bg: #0c0c0e;
+    --bg-raised: #161619;
+    --bg-raised-2: #1e1e22;
+    --border: rgba(255,255,255,0.09);
+    --text: #f2ede4;
+    --text-dim: #8c8c93;
+    --text-faint: #57575d;
+    --accent-purple: #b7a3e0;
+    --accent-blue: #8fb3d9;
+    --accent-pink: #e0a0bb;
+    --accent-orange: #e0b08a;
+    --accent-green: #9fcf9f;
+    --accent-task: #d9c98f;
+    --danger: #e08f8f;
+    --radius: 16px;
+  }
+  [data-theme="light"] {
+    --bg: #f5f1e9;
+    --bg-raised: #ffffff;
+    --bg-raised-2: #ece7dc;
+    --border: rgba(0,0,0,0.08);
+    --text: #201f1c;
+    --text-dim: #6b6a65;
+    --text-faint: #a3a199;
+  }
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  html, body {
+    height: 100%;
+    background: var(--bg);
+    color: var(--text);
+    font-family: 'Inter', -apple-system, BlinkMacSystemFont, sans-serif;
+    -webkit-font-smoothing: antialiased;
+  }
+  body {
+    display: flex;
+    justify-content: center;
+    align-items: flex-start;
+    padding: 32px 16px;
+    min-height: 100%;
+  }
+  .serif { font-family: 'Newsreader', Georgia, serif; }
+
+  .phone {
+    width: 100%;
+    max-width: 400px;
+    background: var(--bg);
+    border-radius: 28px;
+    border: 1px solid var(--border);
+    overflow: hidden;
+    display: flex;
+    flex-direction: column;
+    height: 800px;
+    box-shadow: 0 40px 80px -20px rgba(0,0,0,0.5);
+    position: relative;
+  }
+  .statusbar {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 16px 22px 4px;
+    font-size: 13px;
+    color: var(--text-dim);
+    flex-shrink: 0;
+  }
+  .screen {
+    flex: 1;
+    overflow-y: auto;
+    padding: 8px 22px 12px;
+    display: none;
+    flex-direction: column;
+  }
+  .screen.active { display: flex; }
+
+  /* ---- Home ---- */
+  .date-label { font-size: 13px; color: var(--text-dim); margin-top: 6px; }
+  .greeting { font-size: 30px; font-weight: 500; margin-top: 2px; margin-bottom: 22px; }
+
+  .insert-wrap { position: relative; margin-bottom: 8px; }
+  .insert-bar {
+    width: 100%;
+    background: var(--bg-raised);
+    border: 1px solid var(--border);
+    border-radius: 999px;
+    padding: 14px 18px 14px 44px;
+    font-size: 15px;
+    color: var(--text);
+    outline: none;
+    font-family: inherit;
+  }
+  .insert-bar::placeholder { color: var(--text-faint); }
+  .insert-icon {
+    position: absolute;
+    left: 16px;
+    top: 50%;
+    transform: translateY(-50%);
+    color: var(--text-faint);
+    font-size: 15px;
+    pointer-events: none;
+  }
+  .insert-hint {
+    font-size: 12px;
+    color: var(--text-faint);
+    margin: 10px 4px 18px;
+    line-height: 1.5;
+  }
+
+  .system-msg {
+    background: transparent;
+    border: none;
+    padding: 2px 2px 14px;
+    font-size: 13.5px;
+    line-height: 1.5;
+    margin-bottom: 6px;
+    color: var(--text-dim);
+    animation: fadein 0.25s ease;
+  }
+  @keyframes fadein { from { opacity: 0; transform: translateY(-4px);} to { opacity: 1; transform: translateY(0);} }
+  .system-msg .jump-link {
+    display: inline-block;
+    margin-top: 6px;
+    color: var(--accent-blue);
+    font-size: 13px;
+    cursor: pointer;
+    text-decoration: underline;
+    text-underline-offset: 2px;
+  }
+  .system-msg .choices { display: flex; flex-wrap: wrap; gap: 8px; margin-top: 10px; }
+  .choice-btn {
+    background: var(--bg-raised-2);
+    border: 1px solid var(--border);
+    color: var(--text);
+    border-radius: 999px;
+    padding: 7px 14px;
+    font-size: 13px;
+    cursor: pointer;
+    font-family: inherit;
+  }
+  .choice-btn:hover { border-color: var(--text-dim); }
+  .choice-btn.primary { background: var(--accent-blue); color: #0c0c0e; border-color: transparent; font-weight: 600; }
+
+  .section-label {
+    font-size: 12px;
+    color: var(--text-faint);
+    margin: 6px 0 10px;
+  }
+  .task-item {
+    display: flex;
+    align-items: flex-start;
+    gap: 10px;
+    padding: 12px 0;
+    border-bottom: 1px solid var(--border);
+    cursor: pointer;
+  }
+  .task-item:last-child { border-bottom: none; }
+  .task-check {
+    width: 18px; height: 18px;
+    border-radius: 6px;
+    border: 1.5px solid var(--text-faint);
+    flex-shrink: 0;
+    margin-top: 2px;
+  }
+  .task-item.done .task-check { background: var(--accent-green); border-color: var(--accent-green); }
+  .task-item.done .task-title { text-decoration: line-through; color: var(--text-faint); }
+  .task-title { font-size: 14.5px; }
+  .task-sub { font-size: 12px; color: var(--text-faint); margin-top: 2px; }
+  .empty-state { color: var(--text-faint); font-size: 13.5px; padding: 12px 0; }
+
+  /* ---- Calendar ---- */
+  .cal-header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding-top: 6px;
+    margin-bottom: 10px;
+    gap: 8px;
+  }
+  .cal-nav-btn {
+    background: var(--bg-raised);
+    border: 1px solid var(--border);
+    width: 30px; height: 30px;
+    border-radius: 50%;
+    color: var(--text);
+    font-size: 14px;
+    cursor: pointer;
+    display: flex; align-items: center; justify-content: center;
+    flex-shrink: 0;
+  }
+  .cal-date { font-size: 17px; font-weight: 500; }
+  .cal-controls { display: flex; align-items: center; justify-content: space-between; margin-bottom: 12px; gap: 8px; }
+  .today-btn {
+    background: var(--bg-raised); border: 1px solid var(--border); color: var(--accent-blue);
+    font-size: 12px; padding: 6px 12px; border-radius: 999px; cursor: pointer; font-family: inherit;
+  }
+  .seg { display: flex; background: var(--bg-raised); border: 1px solid var(--border); border-radius: 999px; padding: 3px; gap: 3px; }
+  .seg-btn { flex: 1; text-align: center; padding: 7px 4px; border-radius: 999px; font-size: 12.5px; cursor: pointer; color: var(--text-dim); white-space: nowrap; }
+  .seg-btn.active { background: var(--bg-raised-2); color: var(--text); font-weight: 600; }
+
+  .agenda-row { display: flex; gap: 12px; padding: 2px 0; min-height: 46px; }
+  .agenda-time { width: 46px; flex-shrink: 0; font-size: 11.5px; color: var(--text-faint); padding-top: 2px; }
+  .agenda-line { flex: 1; border-top: 1px solid var(--border); position: relative; padding-top: 4px; }
+
+  .day-grid { display: flex; margin-top: 4px; }
+  .day-grid-labels { width: 46px; flex-shrink: 0; }
+  .day-grid-hourlabel { font-size: 11.5px; color: var(--text-faint); padding-top: 2px; box-sizing: border-box; }
+  .day-grid-events { position: relative; flex: 1; }
+  .day-grid-line { position: absolute; left: 0; right: 0; border-top: 1px solid var(--border); }
+  .day-grid-block {
+    position: absolute;
+    margin: 0 !important;
+    overflow: hidden;
+    box-sizing: border-box;
+  }
+  .day-grid-block .ev-title { white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  .event-block {
+    border-radius: 10px;
+    padding: 8px 12px;
+    margin-bottom: 8px;
+    border-left: 3px solid;
+    cursor: pointer;
+    font-size: 13px;
+  }
+  .event-block .ev-title { font-weight: 600; margin-bottom: 2px; }
+  .event-block .ev-time { font-size: 11.5px; opacity: 0.75; }
+  .c-purple { background: rgba(183,163,224,0.12); border-color: var(--accent-purple); color: var(--accent-purple); }
+  .c-blue { background: rgba(143,179,217,0.12); border-color: var(--accent-blue); color: var(--accent-blue); }
+  .c-pink { background: rgba(224,160,187,0.12); border-color: var(--accent-pink); color: var(--accent-pink); }
+  .c-orange { background: rgba(224,176,138,0.12); border-color: var(--accent-orange); color: var(--accent-orange); }
+  .c-green { background: rgba(159,207,159,0.12); border-color: var(--accent-green); color: var(--accent-green); }
+  .c-neutral { background: var(--bg-raised-2); border-color: var(--text-faint); color: var(--text); }
+  .undated-badge {
+    display: inline-block; font-size: 10.5px; color: var(--text-faint);
+    border: 1px solid var(--border); border-radius: 999px; padding: 1px 8px; margin-top: 4px;
+  }
+
+  .week-row { display: flex; justify-content: space-between; align-items: center; padding: 12px 4px; border-bottom: 1px solid var(--border); cursor: pointer; }
+  .week-row:last-child { border-bottom: none; }
+  .week-day-label { font-size: 13.5px; min-width: 74px; color: var(--text-dim); }
+  .week-day-label.is-today { color: var(--accent-blue); font-weight: 600; }
+  .week-chips { display: flex; gap: 6px; flex-wrap: wrap; flex: 1; justify-content: flex-end; }
+  .week-chip { font-size: 11px; padding: 3px 9px; border-radius: 999px; }
+  .week-empty { font-size: 12px; color: var(--text-faint); }
+
+  .month-grid { display: grid; grid-template-columns: repeat(7, 1fr); gap: 3px; margin-top: 4px; }
+  .month-dow { text-align: center; font-size: 10.5px; color: var(--text-faint); padding-bottom: 6px; }
+  .month-cell { aspect-ratio: 1; display: flex; flex-direction: column; align-items: center; justify-content: center; border-radius: 10px; font-size: 12.5px; cursor: pointer; color: var(--text-dim); position: relative; }
+  .month-cell.other-month { color: var(--text-faint); opacity: 0.35; }
+  .month-cell.is-today { background: var(--bg-raised-2); color: var(--text); font-weight: 600; }
+  .month-dot { width: 4px; height: 4px; border-radius: 50%; background: var(--accent-blue); margin-top: 2px; }
+
+  /* ---- Settings ---- */
+  .settings-group { margin-bottom: 26px; }
+  .settings-title { font-size: 22px; font-weight: 500; margin: 10px 0 18px; }
+  .setting-row {
+    display: flex; justify-content: space-between; align-items: center;
+    padding: 14px 0; border-bottom: 1px solid var(--border); gap: 14px;
+  }
+  .setting-label { font-size: 14.5px; }
+  .setting-sub { font-size: 12px; color: var(--text-faint); margin-top: 2px; }
+
+  /* ---- Tab bar ---- */
+  .tabbar {
+    display: flex;
+    border-top: 1px solid var(--border);
+    padding: 10px 6px 16px;
+    background: var(--bg);
+    flex-shrink: 0;
+  }
+  .tab {
+    flex: 1;
+    display: flex; flex-direction: column; align-items: center; gap: 4px;
+    color: var(--text-faint);
+    cursor: pointer;
+    font-size: 10.5px;
+    padding: 4px 0;
+  }
+  .tab.active { color: var(--text); }
+  .tab svg { width: 19px; height: 19px; }
+
+  .proto-note {
+    max-width: 400px;
+    width: 100%;
+    text-align: center;
+    color: var(--text-faint);
+    font-size: 12px;
+    margin-top: 14px;
+    line-height: 1.6;
+    padding: 0 12px;
+  }
+  .wrap-outer { display: flex; flex-direction: column; align-items: center; width: 100%; }
+
+  /* ---- Edit modal ---- */
+  .modal-overlay {
+    position: absolute; inset: 0;
+    background: rgba(0,0,0,0.55);
+    display: flex; align-items: flex-end;
+    z-index: 50;
+  }
+  .modal-card {
+    background: var(--bg-raised);
+    border-top-left-radius: 22px;
+    border-top-right-radius: 22px;
+    padding: 22px 22px 26px;
+    width: 100%;
+    border-top: 1px solid var(--border);
+  }
+  .modal-title { font-size: 19px; font-weight: 500; margin-bottom: 14px; font-family: 'Newsreader', Georgia, serif; }
+  .modal-hint { font-size: 12px; color: var(--text-faint); margin-bottom: 12px; line-height: 1.5; }
+  .modal-label { font-size: 11.5px; color: var(--text-faint); margin: 12px 0 4px; }
+  .modal-input {
+    width: 100%;
+    background: var(--bg-raised-2);
+    border: 1px solid var(--border);
+    border-radius: 10px;
+    padding: 10px 12px;
+    font-size: 14px;
+    color: var(--text);
+    outline: none;
+    font-family: inherit;
+  }
+  .modal-row { display: flex; gap: 10px; }
+  .modal-row .modal-input { flex: 1; }
+  .modal-actions { display: flex; gap: 8px; margin-top: 20px; }
+  .modal-btn {
+    flex: 1;
+    text-align: center;
+    padding: 11px 0;
+    border-radius: 999px;
+    font-size: 13.5px;
+    cursor: pointer;
+    background: var(--bg-raised-2);
+    color: var(--text);
+    border: 1px solid var(--border);
+  }
+  .modal-btn.primary { background: var(--accent-blue); color: #0c0c0e; font-weight: 600; border-color: transparent; }
+  .modal-btn.danger { color: var(--danger); }
+</style>
+</head>
+<body>
+
+<div class="wrap-outer">
+<div class="phone" id="phone">
+
+  <!-- HOME -->
+  <div class="screen active" id="screen-home">
+    <div class="statusbar"><span class="live-clock">9:41</span><span>⚡ 100%</span></div>
+    <div class="date-label" id="today-label">Friday, 18 September</div>
+    <div class="greeting serif" id="greeting-text">Good evening</div>
+
+    <div class="insert-wrap">
+      <span class="insert-icon">⌕</span>
+      <input class="insert-bar" id="insert-input" type="text" placeholder="What's on your mind?" autocomplete="off">
+    </div>
+    <div class="insert-hint">Type a task, a note, or a time — it'll sort itself out.</div>
+
+    <div id="system-msg-slot"></div>
+    <div id="home-embed"></div>
+  </div>
+
+  <!-- TASKS -->
+  <div class="screen" id="screen-tasks">
+    <div class="statusbar"><span class="live-clock">9:41</span><span>⚡ 100%</span></div>
+    <div class="settings-title serif">Tasks</div>
+    <div id="task-list-full"></div>
+  </div>
+
+  <!-- CALENDAR -->
+  <div class="screen" id="screen-calendar">
+    <div class="statusbar"><span class="live-clock">9:41</span><span>⚡ 100%</span></div>
+    <div class="cal-header">
+      <div class="cal-nav-btn" id="cal-prev">‹</div>
+      <div class="cal-date serif" id="cal-date-label">Today</div>
+      <div class="cal-nav-btn" id="cal-next">›</div>
+    </div>
+    <div class="cal-controls">
+      <div class="seg" style="flex:1">
+        <div class="seg-btn active" data-view="day">Day</div>
+        <div class="seg-btn" data-view="week">Week</div>
+        <div class="seg-btn" data-view="month">Month</div>
+      </div>
+      <div class="today-btn" id="cal-today-btn">Today</div>
+    </div>
+    <div id="calendar-body"></div>
+  </div>
+
+  <!-- SETTINGS -->
+  <div class="screen" id="screen-settings">
+    <div class="statusbar"><span class="live-clock">9:41</span><span>⚡ 100%</span></div>
+    <div class="settings-title serif">Settings</div>
+
+    <div class="settings-group">
+      <div class="setting-row" style="flex-direction:column; align-items:stretch; gap:10px;">
+        <div>
+          <div class="setting-label">Home screen shows</div>
+          <div class="setting-sub">What appears below the insert bar</div>
+        </div>
+        <div class="seg">
+          <div class="seg-btn" data-home="bar">Just the bar</div>
+          <div class="seg-btn" data-home="tasks">Bar + Tasks</div>
+          <div class="seg-btn" data-home="calendar">Bar + Calendar</div>
+        </div>
+      </div>
+      <div class="setting-row" style="border-bottom:none">
+        <div>
+          <div class="setting-label">Appearance</div>
+          <div class="setting-sub">Light or dark</div>
+        </div>
+        <div class="seg" style="width:140px">
+          <div class="seg-btn active" id="theme-dark">Dark</div>
+          <div class="seg-btn" id="theme-light">Light</div>
+        </div>
+      </div>
+    </div>
+
+    <div class="settings-group">
+      <div class="section-label">Default event length</div>
+      <div class="seg">
+        <div class="seg-btn active" data-dur="30">30 min</div>
+        <div class="seg-btn" data-dur="60">60 min</div>
+      </div>
+    </div>
+
+    <div class="settings-group">
+      <div class="section-label">Color-code events</div>
+      <div class="seg">
+        <div class="seg-btn active" data-color="on">On</div>
+        <div class="seg-btn" data-color="off">Off (neutral)</div>
+      </div>
+    </div>
+  </div>
+
+  <!-- TAB BAR -->
+  <div class="tabbar">
+    <div class="tab active" data-tab="home">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6"><path d="M4 11.5 12 4l8 7.5"/><path d="M6 10v9h12v-9"/></svg>
+      Home
+    </div>
+    <div class="tab" data-tab="tasks">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6"><rect x="4" y="4" width="16" height="16" rx="4"/><path d="M8.5 12.5l2.2 2.2L16 9.5"/></svg>
+      Tasks
+    </div>
+    <div class="tab" data-tab="calendar">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6"><rect x="4" y="5" width="16" height="15" rx="3"/><path d="M8 3v4M16 3v4M4 10h16"/></svg>
+      Calendar
+    </div>
+    <div class="tab" data-tab="settings">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6"><circle cx="12" cy="12" r="3.2"/><path d="M12 3v2.4M12 18.6V21M4.9 4.9l1.7 1.7M17.4 17.4l1.7 1.7M3 12h2.4M18.6 12H21M4.9 19.1l1.7-1.7M17.4 6.6l1.7-1.7"/></svg>
+      Settings
+    </div>
+  </div>
+
+</div>
+<div class="proto-note">Prototype only — parsing here runs on keyword/rule-based logic to test interaction and edge cases. The real app will use Claude to actually understand what you type.</div>
+</div>
+
+<script>
+(function(){
+  const DOW = ['sunday','monday','tuesday','wednesday','thursday','friday','saturday'];
+  const DOW_SHORT = ['Sun','Mon','Tue','Wed','Thu','Fri','Sat'];
+  const MONTH_NAMES = ['January','February','March','April','May','June','July','August','September','October','November','December'];
+  const WORDNUM = {a:1,an:1,one:1,two:2,three:3,four:4,five:5,six:6,seven:7,eight:8,nine:9,ten:10,eleven:11,twelve:12};
+
+  let state = {
+    theme: 'dark',
+    homeMode: 'tasks',
+    defaultDuration: 30,
+    calView: 'day',
+    colorCode: true,
+    viewDate: null,
+    items: [],
+    idSeq: 1
+  };
+
+  function uid(){ return state.idSeq++; }
+  function pad(n){ return n.toString().padStart(2,'0'); }
+  function fmtDate(d){ return d.getFullYear()+'-'+pad(d.getMonth()+1)+'-'+pad(d.getDate()); }
+  function addDays(date, n){ const d = new Date(date); d.setDate(d.getDate()+n); return d; }
+  function addMonths(date, n){ const d = new Date(date); d.setMonth(d.getMonth()+n); return d; }
+  function todayDate(){ const d = new Date(); d.setHours(0,0,0,0); return d; }
+  function fmtHM(h,m){ const ampm = h>=12?'pm':'am'; let hh = h%12; if(hh===0) hh=12; return hh + (m? ':'+pad(m) : '') + ampm; }
+  function timeToMin(t){ const [h,m]=t.split(':').map(Number); return h*60+m; }
+  function minToTime(min){ return pad(Math.floor(min/60)%24)+':'+pad(min%60); }
+  function escapeRegExp(s){ return s.replace(/[.*+?^${}()|[\]\\]/g,'\\$&'); }
+  function getViewDateObj(){ if(!state.viewDate) state.viewDate = fmtDate(todayDate()); const [y,m,d]=state.viewDate.split('-').map(Number); return new Date(y,m-1,d); }
+  function setViewDate(d){ state.viewDate = fmtDate(d); }
+
+  // color now means something: blue = timed event, orange = all-day reminder, tan = task
+  function kindColor(isTask, undated){
+    if(isTask) return 'c-task';
+    return undated ? 'c-orange' : 'c-blue';
+  }
+
+  (function seed(){
+    const t = todayDate();
+    const dstr = fmtDate(t);
+    state.viewDate = dstr;
+    state.items.push({id: uid(), title:'Design review', date: dstr, start:'09:00', end:'10:00', isTask:false, undated:false, color:'c-blue'});
+    state.items.push({id: uid(), title:'Deep work — project v2', date: dstr, start:'11:00', end:'12:30', isTask:false, undated:false, color:'c-blue'});
+    state.items.push({id: uid(), title:'Call with Mara', date: dstr, start:'13:30', end:'14:00', isTask:false, undated:false, color:'c-blue'});
+    state.items.push({id: uid(), title:'Dinner, no laptop', date: dstr, start:'19:00', end:'20:30', isTask:false, undated:false, color:'c-blue'});
+    state.items.push({id: uid(), title:'Essay for English', date:null, start:null, end:null, isTask:true, undated:false, color:'c-task'});
+  })();
+
+  function parseTimeTokenRaw(tok){
+    tok = tok.trim().toLowerCase();
+    if(tok==='noon') return {h:12,m:0,ap:'pm'};
+    if(tok==='midnight') return {h:12,m:0,ap:'am'};
+    const m = tok.match(/(\d{1,2})(?::(\d{2}))?\s*(am|pm)?/);
+    if(!m) return null;
+    return {h:parseInt(m[1],10), m:m[2]?parseInt(m[2],10):0, ap:m[3]||null};
+  }
+  function resolveTime(raw, ctx){
+    let h = raw.h, m = raw.m;
+    if(raw.ap){
+      if(raw.ap==='pm' && h<12) h+=12;
+      if(raw.ap==='am' && h===12) h=0;
+      return finalizeWithRollover({h,m}, ctx);
+    }
+    let h12 = h % 12;
+    let amVal = h12, pmVal = h12+12;
+    const dinnerHint = /dinner|night|evening/.test(ctx.titleLower);
+    const breakfastHint = /breakfast|morning/.test(ctx.titleLower);
+    const lunchHint = /lunch/.test(ctx.titleLower);
+    if(dinnerHint) return finalizeWithRollover({h:pmVal, m}, ctx);
+    if(breakfastHint) return finalizeWithRollover({h:amVal, m}, ctx);
+    if(lunchHint) return finalizeWithRollover({h:(h12===0?12:pmVal), m}, ctx);
+    if(ctx.targetDateIsToday){
+      const nowMin = ctx.now.getHours()*60+ctx.now.getMinutes();
+      const amMin = amVal*60+m, pmMin = pmVal*60+m;
+      const amFuture = amMin>nowMin, pmFuture = pmMin>nowMin;
+      let chosen;
+      if(amFuture && !pmFuture) chosen = {h:amVal,m};
+      else if(pmFuture && !amFuture) chosen = {h:pmVal,m};
+      else if(amFuture && pmFuture) chosen = (amMin<pmMin)?{h:amVal,m}:{h:pmVal,m};
+      else chosen = {h:pmVal,m};
+      return finalizeWithRollover(chosen, ctx);
+    }
+    return finalizeWithRollover({ h: (h12>=1 && h12<=6) ? pmVal : amVal, m }, ctx);
+  }
+  // if the resolved time has already passed AND the date was only a default (no day word typed),
+  // roll to tomorrow at the same time instead of creating a past event or flipping meridiem oddly
+  function finalizeWithRollover(ht, ctx){
+    if(ctx.targetDateIsToday && ctx.dateWasDefaulted){
+      const nowMin = ctx.now.getHours()*60+ctx.now.getMinutes();
+      const thisMin = ht.h*60+ht.m;
+      if(thisMin <= nowMin) return {h:ht.h, m:ht.m, rollover:true};
+    }
+    return {h:ht.h, m:ht.m, rollover:false};
+  }
+  function dateObjFromStr(dstr){ const [y,mo,d]=dstr.split('-').map(Number); return new Date(y,mo-1,d); }
+  function extractTimeShift(lower){
+    const dirMatch = lower.match(/\b(up|down|back|earlier|later|forward)\b/);
+    if(!dirMatch) return null;
+    const dir = dirMatch[1];
+    const sign = (dir==='up'||dir==='earlier') ? -1 : 1;
+    if(/half\s*(an\s*)?hour/.test(lower)){
+      return {deltaMin: sign*30, raw:dirMatch[0]};
+    }
+    const m = lower.match(/\b(\d+|a|an|one|two|three|four|five|six|seven|eight|nine|ten)\s*(hour|hr|hours|minute|min|minutes)\b/i);
+    if(!m) return null;
+    const n = /^\d+$/.test(m[1]) ? parseInt(m[1],10) : (WORDNUM[m[1].toLowerCase()]||1);
+    let mins = /hour|hr/i.test(m[2]) ? n*60 : n;
+    return {deltaMin: sign*mins, raw:m[0]};
+  }
+  function findConflicts(dateStr, startMin, endMin, excludeId){
+    return state.items.filter(it=>!it.isTask && !it.undated && it.date===dateStr && it.id!==excludeId && it.start && it.end).filter(it=>{
+      const s=timeToMin(it.start), e=timeToMin(it.end);
+      return Math.max(s,startMin) < Math.min(e,endMin);
+    });
+  }
+  function conflictNote(dateStr, startMin, endMin, excludeId){
+    const c = findConflicts(dateStr, startMin, endMin, excludeId);
+    if(!c.length) return '';
+    return ` Heads up — overlaps with "${c[0].title}" (${eventTimeLabel(c[0])}).`;
+  }
+  function findTimeRaw(lower){
+    const rangeRe = /(\d{1,2}(?::\d{2})?\s*(?:am|pm)?|noon|midnight)\s*(?:-|to|until)\s*(\d{1,2}(?::\d{2})?\s*(?:am|pm)?|noon|midnight)/;
+    const rm = lower.match(rangeRe);
+    if(rm) return {type:'range', raw:rm[0], startTok:rm[1], endTok:rm[2]};
+    const atRe = /\bat\s+(\d{1,2}(?::\d{2})?\s*(?:am|pm)?|noon|midnight)/;
+    const am = lower.match(atRe);
+    if(am) return {type:'single', raw:am[0], tok:am[1]};
+    const bareRe = /\b(\d{1,2}(?::\d{2})?\s*(?:am|pm)|noon|midnight)\b/;
+    const bm = lower.match(bareRe);
+    if(bm) return {type:'single', raw:bm[0], tok:bm[1]};
+    return null;
+  }
+  function extractDurationMin(lower){
+    const m = lower.match(/for\s+(\d{1,3})\s*(min|minute|minutes|hr|hour|hours)/);
+    if(!m) return null;
+    let n = parseInt(m[1],10);
+    if(/hr|hour/.test(m[2])) n = n*60;
+    return n;
+  }
+
+  function extractWeekday(lower){
+    for(let i=0;i<DOW.length;i++){
+      if(new RegExp('\\b'+DOW[i]+'\\b').test(lower)) return i;
+      if(new RegExp('\\b'+DOW[i].slice(0,3)+'\\b').test(lower)) return i;
+    }
+    return null;
+  }
+  function nextDateForWeekday(dow){
+    const t = todayDate();
+    for(let i=0;i<8;i++){ const d = addDays(t,i); if(d.getDay()===dow) return d; }
+    return t;
+  }
+  function strictNextWeekday(dow){
+    const t = todayDate();
+    for(let i=1;i<8;i++){ const d = addDays(t,i); if(d.getDay()===dow) return d; }
+    return addDays(t,7);
+  }
+  function extractNumericDate(lower){
+    const m = lower.match(/\b(\d{1,2})\/(\d{1,2})(?:\/(\d{2,4}))?\b/);
+    if(!m) return null;
+    const month = parseInt(m[1],10)-1, day = parseInt(m[2],10);
+    if(month<0||month>11||day<1||day>31) return null;
+    let year = m[3] ? (m[3].length===2 ? 2000+parseInt(m[3],10) : parseInt(m[3],10)) : new Date().getFullYear();
+    let d = new Date(year, month, day);
+    if(isNaN(d.getTime())) return null;
+    if(!m[3] && d < todayDate()) d = new Date(year+1, month, day);
+    return {date: d, raw: m[0]};
+  }
+  function extractRelativeDay(lower){
+    if(/\btoday\b/.test(lower)) return {date:todayDate(), raw:'today'};
+    if(/\btomorrow\b/.test(lower)) return {date:addDays(todayDate(),1), raw:'tomorrow'};
+    const numeric = extractNumericDate(lower);
+    if(numeric) return numeric;
+    for(let i=0;i<DOW.length;i++){
+      const full = new RegExp('\\b'+DOW[i]+'\\b','i');
+      const abbr = new RegExp('\\b'+DOW[i].slice(0,3)+'\\b','i');
+      const mm = lower.match(full) || lower.match(abbr);
+      if(mm) return {date: nextDateForWeekday(i), raw: mm[0]};
+    }
+    return null;
+  }
+  function extractOrdinalWeekdayOffset(lower){
+    const m = lower.match(/\b(\d+|one|two|three|four|five|six|seven|eight|nine|ten)\s+(sundays|mondays|tuesdays|wednesdays|thursdays|fridays|saturdays)\s+from\s+now\b/i);
+    if(!m) return null;
+    const n = WORDNUM[m[1].toLowerCase()] || parseInt(m[1],10);
+    const dowName = m[2].toLowerCase().slice(0,-1);
+    const dow = DOW.indexOf(dowName);
+    if(dow<0 || !n) return null;
+    let date = strictNextWeekday(dow);
+    date = addDays(date, (n-1)*7);
+    return {date, raw:m[0]};
+  }
+  function extractWeeksFromNow(lower){
+    const m = lower.match(/\bin\s+(\d+|a|one|two|three|four|five|six|seven|eight|nine|ten)\s+weeks?\b/i);
+    if(!m) return null;
+    const n = WORDNUM[m[1].toLowerCase()] || parseInt(m[1],10);
+    if(!n) return null;
+    return {date: addDays(todayDate(), n*7), raw:m[0]};
+  }
+  function startOfWeek(d){ return addDays(d, -d.getDay()); }
+  function computeDeadlineWindow(lower){
+    const t = todayDate();
+    if(/next week/.test(lower)){
+      const thisSunday = startOfWeek(t);
+      const nextMonday = addDays(thisSunday, 8);
+      const nextFriday = addDays(nextMonday, 4);
+      return {start: nextMonday, end: addDays(nextFriday, -1), deadlineLabel: 'next week'};
+    }
+    if(/before sunday/.test(lower)){
+      let sunday = startOfWeek(t);
+      if(sunday < t) sunday = addDays(sunday, 7);
+      return {start: t, end: addDays(sunday, -1), deadlineLabel: 'Sunday'};
+    }
+    let fri = t; while(fri.getDay()!==5) fri = addDays(fri,1);
+    return {start: t, end: addDays(fri,-1), deadlineLabel: 'Friday'};
+  }
+
+  function itemsHoursOnDate(dstr){
+    let mins=0;
+    state.items.forEach(it=>{ if(it.date===dstr && it.start && it.end) mins += timeToMin(it.end)-timeToMin(it.start); });
+    return mins;
+  }
+  function findFreeDayInWindow(start, end){
+    let best=null, bestLoad=Infinity;
+    let d = new Date(start);
+    while(d<=end){
+      const load = itemsHoursOnDate(fmtDate(d));
+      if(load<bestLoad){ bestLoad=load; best=new Date(d); }
+      d = addDays(d,1);
+    }
+    return best || start;
+  }
+
+  function cleanTitle(raw, removals){
+    let text = raw;
+    removals.forEach(r=>{ if(r) text = text.replace(new RegExp(escapeRegExp(r),'ig'),''); });
+    text = text.replace(/\b(every|at|on|for|to|until|next week|sometime|before|move|shift|take|replace|revise|today|tomorrow)\b/ig,' ');
+    text = text.replace(/\s{2,}/g,' ').replace(/^[\s,.-]+|[\s,.-]+$/g,'');
+    if(!text) text = raw.trim();
+    return text.charAt(0).toUpperCase()+text.slice(1);
+  }
+
+  function computeReminder(date, now){
+    const sixAm = new Date(date); sixAm.setHours(6,0,0,0);
+    const isToday = fmtDate(date)===fmtDate(now);
+    if(isToday && now.getTime() > sixAm.getTime()){
+      return {time: new Date(now.getTime() + 90*60000), lateAdd:true};
+    }
+    return {time: sixAm, lateAdd:false};
+  }
+
+  function findMatches(lower){
+    const words = lower.replace(/\b(move|shift|take|replace|revise|cancel|delete|remove|to|on|for|at|up|back|earlier|later|forward|hour|hours|hr|minute|minutes|min|half|an|a|one|two|three|four|five|six|seven|eight|nine|ten|\d+)\b/ig,'').trim().split(/\s+/).filter(w=>w.length>2);
+    return state.items.filter(it=>!it.isTask).filter(it=>{
+      const t = it.title.toLowerCase();
+      return words.some(w=>t.includes(w));
+    });
+  }
+
+  function describeItem(it){
+    const d = dateObjFromStr(it.date);
+    const when = DOW_SHORT[d.getDay()] + ' ' + (d.getMonth()+1)+'/'+d.getDate();
+    const repeatTag = it.seriesId ? ' · repeats' : '';
+    if(it.undated) return `${it.title} — ${when}, all-day (no set time)${repeatTag}`;
+    return `${it.title} — ${when}, ${eventTimeLabel(it)}${repeatTag}`;
+  }
+
+  // collapse every occurrence of the same recurring series into one representative
+  // (the soonest upcoming one) so disambiguation shows one choice per distinct event, not one per date
+  function dedupeSeries(matches){
+    const sorted = [...matches].sort((a,b)=> a.date.localeCompare(b.date));
+    const seen = new Set();
+    const result = [];
+    for(const m of sorted){
+      const key = m.seriesId || ('single-'+m.id);
+      if(seen.has(key)) continue;
+      seen.add(key);
+      result.push(m);
+    }
+    return result;
+  }
+
+  function deleteItem(item){
+    if(item.seriesId){
+      showSystemMessage(`Cancel just this one, or every occurrence of "${item.title}"?`, [
+        {label:'One', action:()=>{ state.items = state.items.filter(i=>i.id!==item.id); showSystemMessage(`Cancelled that one occurrence of "${item.title}".`, []); renderAll(); }},
+        {label:'All', action:()=>{ const n = state.items.filter(i=>i.seriesId===item.seriesId).length; state.items = state.items.filter(i=>i.seriesId!==item.seriesId); showSystemMessage(`Cancelled all ${n} occurrences of "${item.title}".`, []); renderAll(); }}
+      ]);
+      return;
+    }
+    state.items = state.items.filter(i=>i.id!==item.id);
+    showSystemMessage(`Cancelled "${item.title}".`, []);
+    renderAll();
+  }
+
+  function escapeHtml(s){ const d=document.createElement('div'); d.textContent=s; return d.innerHTML; }
+  function closeModal(){ const el = document.getElementById('modal-root'); if(el) el.remove(); }
+  function openEditModal(item){
+    closeModal();
+    const overlay = document.createElement('div');
+    overlay.id = 'modal-root';
+    overlay.className = 'modal-overlay';
+    const card = document.createElement('div');
+    card.className = 'modal-card';
+    const seriesNote = item.seriesId ? '<div class="modal-hint">Part of a repeating series — this only edits this occurrence.</div>' : '';
+    const taskNote = item.isTask ? '<div class="modal-hint">This is a task with no date. Add a day below to schedule it, or leave it blank to keep it as a task.</div>' : '';
+    const reminderNote = (!item.isTask && item.undated) ? '<div class="modal-hint">This is an all-day reminder with no set time. Add a start time to turn it into a timed event, or clear the date to send it back to Tasks.</div>' : '';
+    const eventNote = (!item.isTask && !item.undated) ? '<div class="modal-hint">Clear the date to send this back to Tasks.</div>' : '';
+    card.innerHTML = `
+      <div class="modal-title">Edit</div>
+      ${seriesNote}${taskNote}${reminderNote}${eventNote}
+      <div class="modal-label">Title</div>
+      <input class="modal-input" id="edit-title" type="text" value="${escapeHtml(item.title)}">
+      <div class="modal-label">Date</div>
+      <input class="modal-input" id="edit-date" type="date" value="${item.date||''}">
+      <div class="modal-row">
+        <div style="flex:1"><div class="modal-label">Start</div><input class="modal-input" id="edit-start" type="time" value="${item.start||''}"></div>
+        <div style="flex:1"><div class="modal-label">End</div><input class="modal-input" id="edit-end" type="time" value="${item.end||''}"></div>
+      </div>
+      <div class="modal-actions">
+        <div class="modal-btn danger" id="edit-delete">Delete</div>
+        <div class="modal-btn" id="edit-cancel">Cancel</div>
+        <div class="modal-btn primary" id="edit-save">Save</div>
+      </div>
+    `;
+    overlay.appendChild(card);
+    document.getElementById('phone').appendChild(overlay);
+    overlay.onclick = (e)=>{ if(e.target===overlay) closeModal(); };
+
+    document.getElementById('edit-cancel').onclick = closeModal;
+    document.getElementById('edit-delete').onclick = ()=>{ closeModal(); deleteItem(item); };
+    document.getElementById('edit-save').onclick = ()=>{
+      const newTitle = document.getElementById('edit-title').value.trim();
+      const newDate = document.getElementById('edit-date').value;
+      const origDur = (item.start && item.end) ? timeToMin(item.end)-timeToMin(item.start) : state.defaultDuration;
+      if(newTitle) item.title = newTitle;
+      const s = document.getElementById('edit-start').value;
+      const e = document.getElementById('edit-end').value;
+      let adjustedNote = '';
+
+      if(!newDate){
+        // no date → becomes (or stays) a plain task
+        item.isTask = true; item.date = null; item.undated = false; item.start = null; item.end = null;
+      } else {
+        item.date = newDate;
+        if(s && e){
+          let startMin = timeToMin(s), endMin = timeToMin(e);
+          if(endMin <= startMin){
+            endMin = startMin + origDur;
+            adjustedNote = ` (kept it ${origDur} min long since the end time you left was earlier than the new start)`;
+          }
+          item.start = minToTime(startMin);
+          item.end = minToTime(endMin % 1440);
+          item.isTask = false; item.undated = false;
+        } else {
+          // date but no time → all-day reminder
+          item.start = null; item.end = null;
+          item.isTask = false; item.undated = true;
+        }
+      }
+      item.color = kindColor(item.isTask, item.undated);
+
+      closeModal();
+      let note = '';
+      if(!item.isTask && !item.undated && item.start && item.end){
+        note = conflictNote(item.date, timeToMin(item.start), timeToMin(item.end), item.id);
+      }
+      const jump = item.isTask ? {jumpTab:'tasks'} : {jumpTab:'calendar', jumpDate:dateObjFromStr(item.date)};
+      showSystemMessage(`Updated "${item.title}".${adjustedNote}${note}`, [], jump);
+      renderAll();
+    };
+  }
+
+  const DISMISS_WORDS = ['cancel','never mind','nevermind','nvm','stop','forget it','no thanks','nothing','no'];
+
+  function handleInput(raw){
+    const lower = raw.toLowerCase();
+    if(!raw.trim()) return;
+
+    // bare dismissal while a prompt is showing (or even if not) just clears it — no new message
+    if(DISMISS_WORDS.includes(lower.trim())){
+      document.getElementById('system-msg-slot').innerHTML = '';
+      return;
+    }
+
+    const now = new Date();
+
+    if(/\b(cancel|delete|remove)\b/.test(lower)){
+      const allMatches = findMatches(lower);
+      // if a specific day was named, target that exact occurrence directly instead of
+      // assuming "the soonest one" — e.g. "cancel gym next wednesday" shouldn't touch Monday's
+      const mentionedDay = extractRelativeDay(lower);
+      if(mentionedDay){
+        const dstr = fmtDate(mentionedDay.date);
+        const exact = allMatches.find(m=>m.date===dstr);
+        if(exact){
+          state.items = state.items.filter(i=>i.id!==exact.id);
+          showSystemMessage(`Cancelled "${exact.title}" for ${DOW_SHORT[mentionedDay.date.getDay()]}, ${mentionedDay.date.getMonth()+1}/${mentionedDay.date.getDate()}.`, []);
+          renderAll();
+          return;
+        }
+      }
+      const matches = dedupeSeries(allMatches);
+      if(matches.length===0){
+        showSystemMessage(`Couldn't find anything upcoming that matches that to cancel.`, []);
+        return;
+      }
+      if(matches.length>1){
+        showSystemMessage(`Found a few things that match — which one should I cancel?`, matches.slice(0,4).map(m=>({
+          label: describeItem(m),
+          action: ()=>{ deleteItem(m); }
+        })));
+        return;
+      }
+      deleteItem(matches[0]);
+      return;
+    }
+
+    if(/\b(move|shift|take|replace|revise)\b/.test(lower)){
+      const matches = dedupeSeries(findMatches(lower));
+      if(matches.length===0){
+        showSystemMessage(`There's nothing upcoming that matches that. Want to create it instead?`, [
+          {label:'Create it', action:()=>{
+            const stripped = raw.replace(/\b(move|shift|take|replace|revise)\b/ig,'').trim();
+            const strippedLower = stripped.toLowerCase();
+            const hasDate = extractRelativeDay(strippedLower) || extractOrdinalWeekdayOffset(strippedLower) || extractWeeksFromNow(strippedLower) || /next week|before friday|before sunday|sometime/.test(strippedLower);
+            const hasTime = findTimeRaw(strippedLower);
+            if(!hasDate && !hasTime){
+              showSystemMessage(`When should "${cleanTitle(stripped,[])}" happen? Try again with a day or time, like "friday" or "at 3pm".`, []);
+              return;
+            }
+            handleInput(stripped);
+          }},
+          {label:'Never mind', action:()=>{}}
+        ]);
+        return;
+      }
+      if(matches.length>1){
+        showSystemMessage(`Found a few things that match — which one?`, matches.slice(0,4).map(m=>({
+          label: describeItem(m),
+          action: ()=>{ applyMoveCommand(m, raw, lower, now); }
+        })));
+        return;
+      }
+      applyMoveCommand(matches[0], raw, lower, now);
+      return;
+    }
+
+    const recurMatch = lower.match(/every\s+([a-z,\s]+?)\s+at\s+([\d:]+\s*(?:am|pm)?)/);
+    if(recurMatch){
+      const dayWords = recurMatch[1].split(/,|\band\b|&/).map(s=>s.trim()).filter(Boolean);
+      const days = dayWords.map(w=>{
+        for(let i=0;i<DOW.length;i++){ if(DOW[i].startsWith(w) || w.startsWith(DOW[i].slice(0,3))) return i; }
+        return null;
+      }).filter(x=>x!==null);
+      const timeRaw = parseTimeTokenRaw(recurMatch[2]);
+      if(days.length && timeRaw){
+        const title = cleanTitle(raw, [recurMatch[0]]);
+        const rt = resolveTime(timeRaw, {now, titleLower:lower, targetDateIsToday:false, dateWasDefaulted:false});
+        const seriesId = 'series-'+uid();
+        let earliestDate = null, earliestId = null;
+        const startMin = rt.h*60+rt.m, endMin = startMin+state.defaultDuration;
+        days.forEach(dow=>{
+          for(let w=0; w<8; w++){
+            const d = addDays(nextDateForWeekday(dow), w*7);
+            const newId = uid();
+            if(!earliestDate || d<earliestDate){ earliestDate = d; earliestId = newId; }
+            state.items.push({id:newId, title, date:fmtDate(d), start:minToTime(startMin), end:minToTime(endMin), isTask:false, undated:false, color:kindColor(false,false), recurring:{days}, seriesId});
+          }
+        });
+        const note = earliestDate ? conflictNote(fmtDate(earliestDate), startMin, endMin, earliestId) : '';
+        showSystemMessage(`Set "${title}" for every ${dayWords.join(' & ')} at ${fmtHM(rt.h,rt.m)}.${note}`, [], {jumpTab:'calendar', jumpDate:earliestDate});
+        renderAll();
+        return;
+      }
+    }
+
+    const ordWeekday = extractOrdinalWeekdayOffset(lower);
+    if(ordWeekday){
+      finishDateBasedCreate(raw, lower, ordWeekday.date, [ordWeekday.raw], now);
+      return;
+    }
+
+    const weeksFromNow = extractWeeksFromNow(lower);
+    if(weeksFromNow){
+      finishDateBasedCreate(raw, lower, weeksFromNow.date, [weeksFromNow.raw], now);
+      return;
+    }
+
+    if(/next week|before friday|before sunday|sometime/.test(lower)){
+      const win = computeDeadlineWindow(lower);
+      const day = findFreeDayInWindow(win.start, win.end);
+      const title = cleanTitle(raw, ['next week','sometime','before friday','before sunday']);
+      const tLower = title.toLowerCase();
+      let startH = 9;
+      if(/dinner|night|evening/.test(tLower)) startH = 18;
+      else if(/breakfast|morning/.test(tLower)) startH = 8;
+      else if(/lunch/.test(tLower)) startH = 12;
+      const startMin = startH*60;
+      state.items.push({id:uid(), title, date:fmtDate(day), start:minToTime(startMin), end:minToTime(startMin+state.defaultDuration), isTask:false, undated:false, color:kindColor(false,false)});
+      showSystemMessage(`Put "${title}" on the lightest day before ${win.deadlineLabel} — ${DOW_SHORT[day.getDay()]}, ${day.getMonth()+1}/${day.getDate()}.`, [], {jumpTab:'calendar', jumpDate:day});
+      renderAll();
+      return;
+    }
+
+    const timeRaw = findTimeRaw(lower);
+    const relDay = extractRelativeDay(lower);
+    let targetDate = relDay ? relDay.date : null;
+    if(!targetDate && timeRaw) targetDate = todayDate();
+
+    const dateWasDefaulted = !relDay;
+
+    if(timeRaw && timeRaw.type==='range' && targetDate){
+      let isToday = fmtDate(targetDate)===fmtDate(todayDate());
+      const title = cleanTitle(raw, [timeRaw.raw, relDay&&relDay.raw]);
+      const tLower = title.toLowerCase();
+      const sT = resolveTime(parseTimeTokenRaw(timeRaw.startTok), {now, titleLower:tLower, targetDateIsToday:isToday, dateWasDefaulted});
+      let finalDate = targetDate;
+      if(sT.rollover){ finalDate = addDays(targetDate,1); isToday = false; }
+      const eT = resolveTime(parseTimeTokenRaw(timeRaw.endTok), {now, titleLower:tLower, targetDateIsToday:isToday, dateWasDefaulted:false});
+      const startMin = sT.h*60+sT.m, endMin = eT.h*60+eT.m;
+      const dstr = fmtDate(finalDate);
+      const newId = uid();
+      state.items.push({id:newId, title, date:dstr, start:minToTime(startMin), end:minToTime(endMin), isTask:false, undated:false, color:kindColor(false,false)});
+      const note = conflictNote(dstr, startMin, endMin, newId);
+      showSystemMessage(`Added "${title}" — ${DOW_SHORT[finalDate.getDay()]} ${fmtHM(sT.h,sT.m)}–${fmtHM(eT.h,eT.m)}.${note}`, [], {jumpTab:'calendar', jumpDate:finalDate});
+      renderAll();
+      return;
+    }
+
+    if(timeRaw && timeRaw.type==='single' && targetDate){
+      const isToday = fmtDate(targetDate)===fmtDate(todayDate());
+      const title = cleanTitle(raw, [timeRaw.raw, relDay&&relDay.raw]);
+      const tLower = title.toLowerCase();
+      const rt = resolveTime(parseTimeTokenRaw(timeRaw.tok), {now, titleLower:tLower, targetDateIsToday:isToday, dateWasDefaulted});
+      const finalDate = rt.rollover ? addDays(targetDate,1) : targetDate;
+      const dur = extractDurationMin(lower) || state.defaultDuration;
+      const startMin = rt.h*60+rt.m, endMin = startMin+dur;
+      const dstr = fmtDate(finalDate);
+      const newId = uid();
+      state.items.push({id:newId, title, date:dstr, start:minToTime(startMin), end:minToTime(endMin), isTask:false, undated:false, color:kindColor(false,false)});
+      const note = conflictNote(dstr, startMin, endMin, newId);
+      showSystemMessage(`Added "${title}" — ${DOW_SHORT[finalDate.getDay()]} at ${fmtHM(rt.h,rt.m)}, ${dur} min.${note}`, [], {jumpTab:'calendar', jumpDate:finalDate});
+      renderAll();
+      return;
+    }
+
+    if(relDay && !timeRaw){
+      finishDateBasedCreate(raw, lower, relDay.date, [relDay.raw], now);
+      return;
+    }
+
+    // no date, no time at all — but the title implies a mealtime, so schedule it rather than dumping to Tasks
+    if(!relDay && !timeRaw){
+      const guess = cleanTitle(raw, []);
+      const gLower = guess.toLowerCase();
+      let mealH = null;
+      if(/\bdinner\b/.test(gLower)) mealH = 18;
+      else if(/\bbreakfast\b/.test(gLower)) mealH = 8;
+      else if(/\blunch\b/.test(gLower)) mealH = 12;
+      if(mealH!==null){
+        let day = todayDate();
+        const startMin = mealH*60, endMin = startMin+state.defaultDuration;
+        const nowMin = now.getHours()*60+now.getMinutes();
+        if(startMin <= nowMin) day = addDays(day,1);
+        const dstr = fmtDate(day);
+        const isToday = fmtDate(day)===fmtDate(todayDate());
+        const newId = uid();
+        state.items.push({id:newId, title:guess, date:dstr, start:minToTime(startMin), end:minToTime(endMin), isTask:false, undated:false, color:kindColor(false,false)});
+        const note = conflictNote(dstr, startMin, endMin, newId);
+        showSystemMessage(`Added "${guess}" — ${isToday?'today':DOW_SHORT[day.getDay()]} at ${fmtHM(mealH,0)}.${note}`, [], {jumpTab:'calendar', jumpDate:day});
+        renderAll();
+        return;
+      }
+    }
+
+    const title = cleanTitle(raw, []);
+    state.items.push({id:uid(), title, date:null, start:null, end:null, isTask:true, undated:false, color:'c-task'});
+    showSystemMessage(`Added "${title}" to your tasks.`, [], {jumpTab:'tasks'});
+    renderAll();
+  }
+
+  function finishDateBasedCreate(raw, lower, date, removals, now){
+    const title = cleanTitle(raw, removals);
+    const {time: reminderTime, lateAdd} = computeReminder(date, now);
+    state.items.push({id:uid(), title, date:fmtDate(date), start:null, end:null, isTask:false, undated:true, reminderAt:reminderTime.toISOString(), color:kindColor(false,true)});
+    const isToday = fmtDate(date)===fmtDate(todayDate());
+    let msg;
+    if(lateAdd){
+      msg = `Added "${title}" as an all-day reminder for today — you'll get a notification at ${fmtHM(reminderTime.getHours(), reminderTime.getMinutes())}.`;
+    } else {
+      msg = `Added "${title}" to ${isToday ? 'today' : DOW_SHORT[date.getDay()]+', '+(date.getMonth()+1)+'/'+date.getDate()} — reminder at 6am that day.`;
+    }
+    showSystemMessage(msg, [], {jumpTab:'calendar', jumpDate:date});
+    renderAll();
+  }
+
+  function applyMoveCommand(item, raw, lower, now){
+    // 1) relative time shift: "move dinner up one hour" / "push call back 30 min"
+    const shift = extractTimeShift(lower);
+    if(shift){
+      if(!item.start){ showSystemMessage(`"${item.title}" doesn't have a set time to shift — try giving it a day or time instead.`, []); return; }
+      const dur = item.end ? timeToMin(item.end)-timeToMin(item.start) : state.defaultDuration;
+      const newStartMin = ((timeToMin(item.start)+shift.deltaMin)%1440+1440)%1440;
+      item.start = minToTime(newStartMin);
+      item.end = minToTime((newStartMin+dur)%1440);
+      const note = conflictNote(item.date, newStartMin, newStartMin+dur, item.id);
+      showSystemMessage(`Moved "${item.title}" ${shift.deltaMin<0?'earlier':'later'} — now ${eventTimeLabel(item)}.${note}`, [], {jumpTab:'calendar', jumpDate:dateObjFromStr(item.date)});
+      renderAll();
+      return;
+    }
+    // 2) explicit new day: "move dinner to friday"
+    const rel = extractRelativeDay(lower);
+    if(rel){
+      item.date = fmtDate(rel.date);
+      const note = item.start ? conflictNote(item.date, timeToMin(item.start), timeToMin(item.end), item.id) : '';
+      showSystemMessage(`Moved "${item.title}" to ${DOW_SHORT[rel.date.getDay()]}, ${rel.date.getMonth()+1}/${rel.date.getDate()}.${note}`, [], {jumpTab:'calendar', jumpDate:rel.date});
+      renderAll();
+      return;
+    }
+    // 3) explicit new time, same day: "move dinner to 8pm"
+    const timeRaw = findTimeRaw(lower);
+    if(timeRaw && timeRaw.type==='single' && item.date){
+      const isToday = item.date===fmtDate(todayDate());
+      const rt = resolveTime(parseTimeTokenRaw(timeRaw.tok), {now, titleLower:item.title.toLowerCase(), targetDateIsToday:isToday, dateWasDefaulted:false});
+      const dur = item.end ? timeToMin(item.end)-timeToMin(item.start) : state.defaultDuration;
+      const startMin = rt.h*60+rt.m;
+      item.start = minToTime(startMin);
+      item.end = minToTime(startMin+dur);
+      item.undated = false;
+      item.isTask = false;
+      item.color = kindColor(false, false);
+      const note = conflictNote(item.date, startMin, startMin+dur, item.id);
+      showSystemMessage(`Moved "${item.title}" to ${fmtHM(rt.h,rt.m)}.${note}`, [], {jumpTab:'calendar', jumpDate:dateObjFromStr(item.date)});
+      renderAll();
+      return;
+    }
+    showSystemMessage(`Move "${item.title}" to when? Try a day ("to Friday"), a time ("to 8pm"), or a shift ("up one hour").`, []);
+  }
+
+  function showSystemMessage(text, choices, jump){
+    const slot = document.getElementById('system-msg-slot');
+    slot.innerHTML = '';
+    const box = document.createElement('div');
+    box.className = 'system-msg';
+    const p = document.createElement('div');
+    p.textContent = text;
+    box.appendChild(p);
+    if(jump){
+      const link = document.createElement('div');
+      link.className = 'jump-link';
+      link.textContent = jump.jumpTab === 'tasks' ? 'View in Tasks →' : 'View on Calendar →';
+      link.onclick = ()=>{
+        if(jump.jumpDate){ setViewDate(jump.jumpDate); state.calView='day'; }
+        setTab(jump.jumpTab);
+      };
+      box.appendChild(link);
+    }
+    if(choices && choices.length){
+      const row = document.createElement('div');
+      row.className = 'choices';
+      choices.forEach((c,i)=>{
+        const b = document.createElement('div');
+        b.className = 'choice-btn' + (i===0?' primary':'');
+        b.textContent = c.label;
+        b.onclick = ()=>{ slot.innerHTML=''; c.action(); };
+        row.appendChild(b);
+      });
+      box.appendChild(row);
+    }
+    slot.appendChild(box);
+  }
+
+  function renderTaskListInto(container){
+    const tasks = state.items.filter(it=>it.isTask);
+    if(!tasks.length){ container.innerHTML = '<div class="empty-state">Nothing on your list. Type anything above.</div>'; return; }
+    container.innerHTML = '';
+    tasks.forEach(t=>{
+      const row = document.createElement('div');
+      row.className = 'task-item' + (t.done? ' done':'');
+      row.innerHTML = `<div class="task-check"></div><div><div class="task-title">${t.title}</div><div class="task-sub">No date yet</div></div>`;
+      const checkEl = row.querySelector('.task-check');
+      checkEl.onclick = (ev)=>{ ev.stopPropagation(); t.done = !t.done; renderAll(); };
+      row.onclick = ()=> openEditModal(t);
+      container.appendChild(row);
+    });
+  }
+
+  function eventTimeLabel(it){
+    const s = it.start.split(':').map(Number), e = it.end.split(':').map(Number);
+    return fmtHM(s[0],s[1])+'–'+fmtHM(e[0],e[1]);
+  }
+  function reminderLabel(it){
+    if(!it.reminderAt) return 'reminder 6am';
+    const d = new Date(it.reminderAt);
+    return 'reminder '+fmtHM(d.getHours(), d.getMinutes());
+  }
+
+  // groups overlapping events into clusters, then assigns each a column within its cluster
+  // so overlapping events render side-by-side instead of stacking
+  function layoutOverlaps(items){
+    const sorted = [...items].sort((a,b)=> timeToMin(a.start)-timeToMin(b.start) || timeToMin(a.end)-timeToMin(b.end));
+    const clusters = [];
+    let current = [], currentEnd = -1;
+    sorted.forEach(it=>{
+      const s = timeToMin(it.start), e = timeToMin(it.end);
+      if(current.length===0 || s < currentEnd){
+        current.push(it);
+        currentEnd = Math.max(currentEnd, e);
+      } else {
+        clusters.push(current);
+        current = [it];
+        currentEnd = e;
+      }
+    });
+    if(current.length) clusters.push(current);
+
+    const positioned = [];
+    clusters.forEach(cluster=>{
+      const colEnds = [];
+      const colOf = new Map();
+      cluster.forEach(it=>{
+        const s = timeToMin(it.start), e = timeToMin(it.end);
+        let placed = false;
+        for(let c=0;c<colEnds.length;c++){
+          if(colEnds[c] <= s){ colEnds[c]=e; colOf.set(it,c); placed=true; break; }
+        }
+        if(!placed){ colEnds.push(e); colOf.set(it, colEnds.length-1); }
+      });
+      const totalCols = colEnds.length;
+      cluster.forEach(it=> positioned.push({item:it, col: colOf.get(it), totalCols}));
+    });
+    return positioned;
+  }
+
+  function renderDay(container, d){
+    const dstr = fmtDate(d);
+    const dayItems = state.items.filter(it=>!it.isTask && it.date===dstr);
+    const undated = dayItems.filter(it=>it.undated);
+    const timed = dayItems.filter(it=>!it.undated);
+
+    undated.forEach(it=>{
+      const b = document.createElement('div');
+      b.className = 'event-block ' + (state.colorCode ? it.color : 'c-neutral');
+      b.innerHTML = `<div class="ev-title">${it.title}</div><span class="undated-badge">${reminderLabel(it)}</span>`;
+      b.onclick = ()=> openEditModal(it);
+      container.appendChild(b);
+    });
+
+    const HOUR_PX = 56;
+    const gridWrap = document.createElement('div');
+    gridWrap.className = 'day-grid';
+
+    const labelsCol = document.createElement('div');
+    labelsCol.className = 'day-grid-labels';
+    for(let h=0; h<=23; h++){
+      const lbl = document.createElement('div');
+      lbl.className = 'day-grid-hourlabel';
+      lbl.style.height = HOUR_PX+'px';
+      lbl.textContent = fmtHM(h,0);
+      labelsCol.appendChild(lbl);
+    }
+
+    const eventsCol = document.createElement('div');
+    eventsCol.className = 'day-grid-events';
+    eventsCol.style.height = (24*HOUR_PX)+'px';
+    for(let h=0; h<=23; h++){
+      const line = document.createElement('div');
+      line.className = 'day-grid-line';
+      line.style.top = (h*HOUR_PX)+'px';
+      eventsCol.appendChild(line);
+    }
+
+    layoutOverlaps(timed).forEach(({item, col, totalCols})=>{
+      const s = timeToMin(item.start), e = timeToMin(item.end);
+      const top = (s/60)*HOUR_PX;
+      const height = Math.max(((e-s)/60)*HOUR_PX - 2, 22);
+      const widthPct = 100/totalCols;
+      const b = document.createElement('div');
+      b.className = 'event-block day-grid-block ' + (state.colorCode ? item.color : 'c-neutral');
+      b.style.top = top+'px';
+      b.style.height = height+'px';
+      b.style.left = (col*widthPct)+'%';
+      b.style.width = `calc(${widthPct}% - 4px)`;
+      b.innerHTML = `<div class="ev-title">${item.title}</div><div class="ev-time">${eventTimeLabel(item)}</div>`;
+      b.onclick = ()=> openEditModal(item);
+      eventsCol.appendChild(b);
+    });
+
+    gridWrap.appendChild(labelsCol);
+    gridWrap.appendChild(eventsCol);
+    container.appendChild(gridWrap);
+  }
+
+  function renderWeek(container, d){
+    const sunday = startOfWeek(d);
+    for(let i=0;i<7;i++){
+      const day = addDays(sunday, i);
+      const dstr = fmtDate(day);
+      const dayItems = state.items.filter(it=>!it.isTask && it.date===dstr);
+      const row = document.createElement('div');
+      row.className = 'week-row';
+      const isToday = fmtDate(day)===fmtDate(todayDate());
+      const label = document.createElement('div');
+      label.className = 'week-day-label' + (isToday?' is-today':'');
+      label.textContent = DOW_SHORT[day.getDay()] + ' ' + (day.getMonth()+1)+'/'+day.getDate();
+      const chips = document.createElement('div');
+      chips.className = 'week-chips';
+      if(!dayItems.length){
+        chips.innerHTML = '<span class="week-empty">Free</span>';
+      } else {
+        dayItems.slice(0,3).forEach(it=>{
+          const chip = document.createElement('span');
+          chip.className = 'week-chip event-block ' + (state.colorCode ? it.color : 'c-neutral');
+          chip.style.margin = '0';
+          chip.textContent = it.title;
+          chips.appendChild(chip);
+        });
+        if(dayItems.length>3){
+          const more = document.createElement('span');
+          more.className = 'week-empty';
+          more.textContent = '+'+(dayItems.length-3);
+          chips.appendChild(more);
+        }
+      }
+      row.appendChild(label); row.appendChild(chips);
+      row.onclick = ()=>{ setViewDate(day); state.calView='day'; document.querySelectorAll('[data-view]').forEach(b=>b.classList.toggle('active', b.dataset.view==='day')); renderCalendar(); };
+      container.appendChild(row);
+    }
+  }
+
+  function renderMonth(container, d){
+    const grid = document.createElement('div');
+    grid.className = 'month-grid';
+    ['S','M','T','W','T','F','S'].forEach(l=>{
+      const h = document.createElement('div'); h.className='month-dow'; h.textContent = l; grid.appendChild(h);
+    });
+    const firstOfMonth = new Date(d.getFullYear(), d.getMonth(), 1);
+    const gridStart = addDays(firstOfMonth, -firstOfMonth.getDay());
+    for(let i=0;i<42;i++){
+      const day = addDays(gridStart, i);
+      const dstr = fmtDate(day);
+      const cell = document.createElement('div');
+      const inMonth = day.getMonth()===d.getMonth();
+      cell.className = 'month-cell' + (inMonth?'':' other-month') + (fmtDate(day)===fmtDate(todayDate())?' is-today':'');
+      const hasItems = state.items.some(it=>!it.isTask && it.date===dstr);
+      cell.innerHTML = day.getDate() + (hasItems?'<div class="month-dot"></div>':'');
+      cell.onclick = ()=>{ setViewDate(day); state.calView='day'; document.querySelectorAll('[data-view]').forEach(b=>b.classList.toggle('active', b.dataset.view==='day')); renderCalendar(); };
+      grid.appendChild(cell);
+    }
+    container.appendChild(grid);
+  }
+
+  function renderCalendar(){
+    const d = getViewDateObj();
+    const label = document.getElementById('cal-date-label');
+    const body = document.getElementById('calendar-body');
+    body.innerHTML = '';
+    if(state.calView==='day'){
+      const isToday = fmtDate(d)===fmtDate(todayDate());
+      label.textContent = isToday ? 'Today' : (DOW_SHORT[d.getDay()] + ', ' + (d.getMonth()+1)+'/'+d.getDate());
+      renderDay(body, d);
+    } else if(state.calView==='week'){
+      const sunday = startOfWeek(d);
+      const satEnd = addDays(sunday,6);
+      label.textContent = (sunday.getMonth()+1)+'/'+sunday.getDate() + ' – ' + (satEnd.getMonth()+1)+'/'+satEnd.getDate();
+      renderWeek(body, d);
+    } else {
+      label.textContent = MONTH_NAMES[d.getMonth()] + ' ' + d.getFullYear();
+      renderMonth(body, d);
+    }
+  }
+
+  function renderHomeEmbed(){
+    const el = document.getElementById('home-embed');
+    el.innerHTML = '';
+    if(state.homeMode==='bar') return;
+    if(state.homeMode==='tasks'){
+      const label = document.createElement('div'); label.className='section-label'; label.textContent='Tasks';
+      el.appendChild(label);
+      const list = document.createElement('div');
+      renderTaskListInto(list);
+      el.appendChild(list);
+    } else {
+      const label = document.createElement('div'); label.className='section-label'; label.textContent='Today';
+      el.appendChild(label);
+      renderDay(el, todayDate());
+    }
+  }
+
+  function renderAll(){
+    renderTaskListInto(document.getElementById('task-list-full'));
+    renderCalendar();
+    renderHomeEmbed();
+  }
+
+  function setTab(name){
+    document.querySelectorAll('.screen').forEach(s=>s.classList.remove('active'));
+    document.querySelectorAll('.tab').forEach(t=>t.classList.remove('active'));
+    document.getElementById('screen-'+name).classList.add('active');
+    document.querySelector('.tab[data-tab="'+name+'"]').classList.add('active');
+    if(name==='calendar') renderCalendar();
+    if(name==='tasks') renderTaskListInto(document.getElementById('task-list-full'));
+    if(name==='home') renderHomeEmbed();
+  }
+  document.querySelectorAll('.tab').forEach(t=> t.addEventListener('click', ()=> setTab(t.dataset.tab)));
+
+  const inputEl = document.getElementById('insert-input');
+  inputEl.addEventListener('keydown', (e)=>{
+    if(e.key==='Enter' && inputEl.value.trim()){
+      handleInput(inputEl.value);
+      inputEl.value='';
+    }
+  });
+
+  document.getElementById('cal-prev').onclick = ()=>{
+    const d = getViewDateObj();
+    if(state.calView==='day') setViewDate(addDays(d,-1));
+    else if(state.calView==='week') setViewDate(addDays(d,-7));
+    else setViewDate(addMonths(d,-1));
+    renderCalendar();
+  };
+  document.getElementById('cal-next').onclick = ()=>{
+    const d = getViewDateObj();
+    if(state.calView==='day') setViewDate(addDays(d,1));
+    else if(state.calView==='week') setViewDate(addDays(d,7));
+    else setViewDate(addMonths(d,1));
+    renderCalendar();
+  };
+  document.getElementById('cal-today-btn').onclick = ()=>{ setViewDate(todayDate()); renderCalendar(); };
+  document.querySelectorAll('[data-view]').forEach(btn=>{
+    btn.onclick = ()=>{
+      document.querySelectorAll('[data-view]').forEach(b=>b.classList.remove('active'));
+      btn.classList.add('active');
+      state.calView = btn.dataset.view;
+      renderCalendar();
+    };
+  });
+
+  document.querySelectorAll('[data-home]').forEach(btn=>{
+    btn.onclick = ()=>{
+      document.querySelectorAll('[data-home]').forEach(b=>b.classList.remove('active'));
+      btn.classList.add('active');
+      state.homeMode = btn.dataset.home;
+      renderHomeEmbed();
+    };
+  });
+  document.getElementById('theme-dark').onclick = ()=> setTheme('dark');
+  document.getElementById('theme-light').onclick = ()=> setTheme('light');
+  function setTheme(name){
+    state.theme = name;
+    document.documentElement.setAttribute('data-theme', name==='light'?'light':'');
+    document.getElementById('theme-dark').classList.toggle('active', name==='dark');
+    document.getElementById('theme-light').classList.toggle('active', name==='light');
+  }
+  document.querySelectorAll('[data-dur]').forEach(btn=>{
+    btn.onclick = ()=>{
+      document.querySelectorAll('[data-dur]').forEach(b=>b.classList.remove('active'));
+      btn.classList.add('active');
+      state.defaultDuration = parseInt(btn.dataset.dur,10);
+    };
+  });
+  document.querySelectorAll('[data-color]').forEach(btn=>{
+    btn.onclick = ()=>{
+      document.querySelectorAll('[data-color]').forEach(b=>b.classList.remove('active'));
+      btn.classList.add('active');
+      state.colorCode = btn.dataset.color==='on';
+      renderAll();
+    };
+  });
+
+  function updateLiveClock(){
+    const n = new Date();
+    const text = fmtHM(n.getHours(), n.getMinutes());
+    document.querySelectorAll('.live-clock').forEach(el=> el.textContent = text);
+  }
+
+  (function init(){
+    const t = todayDate();
+    document.getElementById('today-label').textContent = t.toLocaleDateString('en-US', {weekday:'long', month:'long', day:'numeric'});
+    const hour = new Date().getHours();
+    document.getElementById('greeting-text').textContent = hour < 12 ? 'Good morning' : hour < 18 ? 'Good afternoon' : 'Good evening';
+    document.querySelector('[data-home="tasks"]').classList.add('active');
+    renderAll();
+    updateLiveClock();
+    setInterval(updateLiveClock, 15000);
+  })();
+})();
+</script>
+</body>
+</html>
