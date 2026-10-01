@@ -91,6 +91,8 @@ export function validateIntent(raw: unknown): Intent | null {
 
 export interface FallbackOptions {
   online: boolean;
+  /** False when the plan's monthly AI allowance is used up (see plans.ts canUseAI). */
+  aiAllowed?: boolean;
   /** Calls the app's own server endpoint; resolves to the model's JSON. */
   fetchIntent?: (text: string, now: Date, signal: AbortSignal) => Promise<unknown>;
   timeoutMs?: number;
@@ -102,9 +104,11 @@ export interface FallbackOptions {
  */
 export async function handleInputWithFallback(
   state: EngineState, input: string, ctx: EngineContext, opts: FallbackOptions,
-): Promise<Outcome & { source: 'rules' | 'ai' }> {
+): Promise<Outcome & { source: 'rules' | 'ai'; aiSkipped?: 'quota' }> {
   const local = handleInput(state, input, ctx);
   if (!local.needsFallback || !opts.online || !opts.fetchIntent || !local.fallbackText) return { ...local, source: 'rules' };
+  // Out of free AI parses: the rule result still goes through instantly; the UI may hint at Pro.
+  if (opts.aiAllowed === false) return { ...local, source: 'rules', aiSkipped: 'quota' };
 
   const controller = new AbortController();
   const timer = setTimeout(() => controller.abort(), opts.timeoutMs ?? FALLBACK_TIMEOUT_MS);

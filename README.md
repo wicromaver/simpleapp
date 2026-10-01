@@ -14,7 +14,7 @@ reminder, or a calendar event. Web + iOS first, Android later.
 packages/core   Pure TypeScript scheduling logic shared by every platform:
                 natural-language parser, rules engine (create/move/cancel/complete,
                 follow-up questions), recurrence, conflicts, Day-view layout,
-                edit-sheet save logic, notifications, trial status, AI-fallback contract.
+                edit-sheet save logic, notifications, Free/Pro plan rules, AI-fallback contract.
 apps/           (next) Expo app for iOS + web (+ Android)
 ```
 

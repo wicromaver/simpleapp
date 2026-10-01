@@ -1,8 +1,8 @@
-// Edit sheet (§6, §4.15), calendar layout (§7), tasks list, notifications, fallback, trial.
+// Edit sheet (§6, §4.15), calendar layout (§7), tasks list, notifications, fallback, plans.
 import { describe, expect, it } from 'vitest';
 import {
-  accessStatus, applyEdit, applyOps, daySegments, handleInputWithFallback, layoutDay, monthGrid, notificationTimes,
-  requestDelete, toggleTask, trialBanner, validateIntent, visibleTasks, type EngineState,
+  aiQuota, applyEdit, canUseAI, effectivePlan, FREE_AI_PARSES_PER_MONTH, freeEntitlement, hasFeature, recordAIUse, applyOps, daySegments, handleInputWithFallback, layoutDay, monthGrid, notificationTimes,
+  requestDelete, toggleTask, validateIntent, visibleTasks, type EngineState, type Entitlement,
 } from '../src';
 import { at, makeCtx, seed, Session, WED_2PM } from './helpers';
 
@@ -174,15 +174,44 @@ describe('AI fallback', () => {
   });
 });
 
-describe('trial / paywall', () => {
-  const start = at(2026, 9, 30, 10).toISOString();
-  it('7 days free, visible countdown, then blocked until paid', () => {
-    const day1 = accessStatus({ trialStartedAt: start, paidUntil: null }, at(2026, 9, 30, 11));
-    expect(day1).toMatchObject({ state: 'trial', daysLeft: 7 });
-    expect(trialBanner(day1)).toBe('Free trial — 7 days left');
-    const last = accessStatus({ trialStartedAt: start, paidUntil: null }, at(2026, 10, 7, 9));
-    expect(trialBanner(last)).toBe('Last day of your free trial');
-    expect(accessStatus({ trialStartedAt: start, paidUntil: null }, at(2026, 10, 7, 10, 1)).state).toBe('expired');
-    expect(accessStatus({ trialStartedAt: start, paidUntil: at(2026, 11, 7).toISOString() }, at(2026, 10, 8)).state).toBe('active');
+describe('plans: free vs pro', () => {
+  const now = at(2026, 9, 30, 10);
+
+  it('free has no time limit, no sync, and 100 AI parses a month', () => {
+    const e = freeEntitlement(now);
+    const muchLater = at(2028, 1, 1);
+    expect(effectivePlan(e, muchLater)).toBe('free');
+    expect(hasFeature(e, now, 'calendarSync')).toBe(false);
+    expect(aiQuota(e, now)).toEqual({ limit: 100, used: 0, remaining: 100, resetsOn: '2026-10-01' });
+  });
+
+  it('the AI allowance runs out at 100 and resets next month', () => {
+    let e = freeEntitlement(now);
+    for (let i = 0; i < FREE_AI_PARSES_PER_MONTH; i++) e = recordAIUse(e, now);
+    expect(canUseAI(e, now)).toBe(false);
+    expect(aiQuota(e, now).remaining).toBe(0);
+    const nextMonth = at(2026, 10, 1, 0, 1);
+    expect(canUseAI(e, nextMonth)).toBe(true);
+    expect(recordAIUse(e, nextMonth).aiUsage).toEqual({ period: '2026-10', count: 1 });
+  });
+
+  it('pro unlocks sync and unlimited AI until it lapses', () => {
+    let e: Entitlement = { ...freeEntitlement(now), proUntil: at(2026, 10, 30).toISOString() };
+    for (let i = 0; i < 500; i++) e = recordAIUse(e, now);
+    expect(effectivePlan(e, now)).toBe('pro');
+    expect(hasFeature(e, now, 'calendarSync')).toBe(true);
+    expect(canUseAI(e, now)).toBe(true);
+    expect(aiQuota(e, now).limit).toBeNull();
+    expect(effectivePlan(e, at(2026, 10, 31))).toBe('free');
+  });
+
+  it('out of AI parses => rules result instantly, no call, flagged for an upgrade hint', async () => {
+    let called = false;
+    const r = await handleInputWithFallback({ items: [], series: [], pending: null }, 'call mom every other tuesday', makeCtx(WED_2PM), {
+      online: true, aiAllowed: false, fetchIntent: async () => { called = true; return {}; },
+    });
+    expect(called).toBe(false);
+    expect(r).toMatchObject({ source: 'rules', aiSkipped: 'quota' });
+    expect(r.ops.length).toBeGreaterThan(0);
   });
 });

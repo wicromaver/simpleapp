@@ -6,5 +6,5 @@ export * from './recurrence';
 export * from './parse';
 export * from './engine';
 export * from './fallback';
-export * from './trial';
+export * from './plans';
 export { Scanner } from './extract';

@@ -1,6 +1,6 @@
 # Decisions (supersede APP_SPEC.md where they conflict)
 
-Recorded from the product owner's answers on 2026-10-01. `APP_SPEC.md` and `prototype.html`
+Recorded from the product owner's answers on 2026-10-01 (plans revised the same day). `APP_SPEC.md` and `prototype.html`
 remain the behavioral reference; where they disagree with this file, this file wins.
 
 ## Platforms & stack
@@ -28,20 +28,31 @@ remain the behavioral reference; where they disagree with this file, this file w
   applies it with the same engine, so every spec rule (rollover, meal hints, conflicts,
   least-booked day, …) holds regardless of who understood the text.
 
-## Accounts, trial, paywall
+## Plans: Free and Pro (revised 2026-10-01, replaces the 7-day trial)
 
-- Users sign in before first use. Sign-up must be quick (email magic link or code, plus
-  Sign in with Apple and Google).
-- **7-day free trial with no card.** It is a server-side trial: `trial_started_at` is set
-  at signup. It is *not* a store-managed trial, since App Store and Play trials need a
-  payment method.
-- The trial is visible from day one: a banner reads "Free trial — N days left" and then
-  "Last day of your free trial". It must never feel like a surprise lockout.
-- After 7 days the app is blocked until the user subscribes. Their data is kept.
-- Billing: Stripe on web, and in-app purchase on iOS/Android (store rules). RevenueCat is
-  the likely glue so one entitlement covers all platforms.
-- Open question: is "7 days" seven calendar days from signup (implemented) or seven
-  days of actual use?
+**Free:** no time limit, no card.
+- The full local app: insert bar, Day/Week/Month calendar, Tasks, Settings, and on-device
+  parsing, with unlimited use.
+- **100 AI-assisted parses per month.** These are only used when the rules are unsure and
+  the device is online. The allowance resets on the 1st. When it runs out, the rule-based
+  result goes through instantly, with at most a subtle "Pro has unlimited" hint. Nothing
+  is ever blocked.
+
+**Pro:** $6/month billed monthly, or $4/month billed annually ($48/year).
+- Google Calendar and Outlook sync (two-way).
+- Unlimited AI-assisted parsing.
+
+Implementation notes:
+- `packages/core/src/plans.ts` holds the plan and feature rules, the quota maths and pricing
+  constants. The server stores `pro_until` and the monthly AI counter and is the source of
+  truth: the AI endpoint checks and increments the counter before calling the model. The
+  client runs the same functions only to skip a call it knows would be refused.
+- **Billing is deferred** until we ship to the App Store and web. Until then, Pro can be
+  granted manually by setting `pro_until` in the database for testers. Likely approach
+  later: Stripe on web plus in-app purchase on iOS/Android, unified with RevenueCat
+  (Apple requires in-app purchase for subscriptions bought inside the iOS app).
+- Users sign in to sync across devices and to count AI usage. Sign-up must stay quick:
+  email code or magic link, Sign in with Apple, Google.
 
 ## Behavior decisions
 
