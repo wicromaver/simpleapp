@@ -236,6 +236,28 @@ describe('regressions found while probing', () => {
   });
 });
 
+describe('unmarked hour ranges', () => {
+  it('"design review 11-12" is 11am–12pm', () => {
+    const s = session(at(2026, 9, 30, 9));
+    s.say('design review 11-12');
+    expect(s.one()).toMatchObject({ title: 'Design review', start: '11:00', end: '12:00' });
+  });
+
+  it('"study 9-11" picks a sensible meridiem and an end after the start', () => {
+    const s = session(at(2026, 9, 30, 8));
+    s.say('study 9-11');
+    expect(s.one()).toMatchObject({ start: '09:00', end: '11:00' });
+  });
+
+  it('counts are not times ("read chapters 3-4", "do problems 1-5")', () => {
+    const s = session();
+    s.say('read chapters 3-4');
+    expect(s.one()).toMatchObject({ title: 'Read chapters 3-4', date: null });
+    s.say('do problems 1-5 friday');
+    expect(s.one()).toMatchObject({ title: 'Do problems 1-5', date: '2026-10-02', start: null });
+  });
+});
+
 describe('§4.8 N weekdays from now / in N weeks', () => {
   it('"two mondays from now" is the Monday after next', () => {
     const s = session();

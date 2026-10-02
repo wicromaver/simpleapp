@@ -7,6 +7,9 @@
   ],
   "scripts": {
     "test": "npm run test --workspaces --if-present",
-    "typecheck": "npm run typecheck --workspaces --if-present"
+    "typecheck": "npm run typecheck --workspaces --if-present",
+    "web": "npm run web -w @simpleapp/mobile",
+    "ios": "npm run ios -w @simpleapp/mobile",
+    "build:web": "npm run build:web -w @simpleapp/mobile"
   }
 }

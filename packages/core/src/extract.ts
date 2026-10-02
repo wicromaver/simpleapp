@@ -52,6 +52,9 @@ export class Scanner {
 
 const notDigitOrSlash = (p: string) => !/[\d/:.]/.test(p);
 
+/** Words that make a following "3-4" a count, not a time. */
+const COUNT_NOUNS = /^(?:chapters?|ch|pages?|pp?|pgs?|questions?|qs?|problems?|exercises?|sections?|lessons?|units?|modules?|weeks?|days?|steps?|items?|reps?|sets?|rows?|lines?|verses?|slides?|parts?|levels?|grades?|ages?|v|versions?|episodes?|eps?|seasons?|rounds?|games?|tickets?|issues?|tasks?|#)$/i;
+
 // ---------------------------------------------------------------------------
 // Times
 // ---------------------------------------------------------------------------
@@ -101,7 +104,13 @@ export function extractRange(sc: Scanner): { start: RawTime; end: RawTime } | nu
   if (m[3] === 'and' && lead !== 'between') return null;
   const sTok = m[2]!, eTok = m[4]!;
   const marked = (s: string) => /noon|midnight|:|m\.?$|m$/.test(s.trim());
-  if (!lead && !marked(sTok) && !marked(eTok)) return null; // "chapters 3-4" is not a time
+  if (!lead && !marked(sTok) && !marked(eTok)) {
+    // Bare "11-12" is an hour range unless it's counting something ("chapters 3-4").
+    const prevWord = sc.rest().slice(0, m.index).trim().split(/\s+/).pop() ?? '';
+    const bare = /^\d{1,2}$/.test(sTok.trim()) && /^\d{1,2}$/.test(eTok.trim());
+    const hours = bare && [sTok, eTok].every((t) => { const n = parseInt(t, 10); return n >= 1 && n <= 12; });
+    if (m[3] !== '-' || !hours || COUNT_NOUNS.test(prevWord)) return null;
+  }
   let start = parseTimeTok(sTok);
   let end = parseTimeTok(eTok);
   if (!start || !end) return null;
