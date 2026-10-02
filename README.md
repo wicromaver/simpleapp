@@ -33,15 +33,13 @@ npm run ios       # iOS: scan the QR code with Expo Go, or press i for the simul
 npm run build:web # static web build in apps/mobile/dist (deploy anywhere, e.g. Vercel)
 ```
 
-Optional environment variables (in `apps/mobile/.env`; without them the app runs
-fully on-device, and the welcome screen's "Sign in" explains it isn't set up yet):
+## Backend (Supabase)
 
-```
-EXPO_PUBLIC_SUPABASE_URL=https://<project>.supabase.co
-EXPO_PUBLIC_SUPABASE_ANON_KEY=<anon / publishable key>      # public by design
-EXPO_PUBLIC_PARSE_FALLBACK_URL=<AI fallback endpoint>       # not deployed yet
-```
+The app talks to the Supabase project in `apps/mobile/src/config.ts` (URL + publishable
+key, both safe to ship; Row Level Security protects data). Env vars
+`EXPO_PUBLIC_SUPABASE_URL` / `EXPO_PUBLIC_SUPABASE_ANON_KEY` override it. The app works
+fully offline either way; sync catches up when it can.
 
-Supabase setup for sign-in: enable Email and Anonymous sign-ins under Authentication →
-Providers, and put `{{ .Token }}` in the "Magic Link" and "Change Email Address" email
-templates so users get a 6-digit code.
+One-time project setup: see [`supabase/README.md`](supabase/README.md).
+
+`EXPO_PUBLIC_PARSE_FALLBACK_URL` enables the online AI fallback (endpoint not deployed yet).

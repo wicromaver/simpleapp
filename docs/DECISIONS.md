@@ -89,6 +89,20 @@ Known limits of this design (accepted tradeoffs, with mitigations):
   Turnstile/hCaptcha), per-device and per-IP rate limits on the AI endpoint, and
   periodic cleanup of stale anonymous accounts.
 
+## Sync (built 2026-10-02)
+
+- Offline-first: the device is the source of truth for the UI. Every change is saved
+  locally at once, marked "dirty", and pushed when online (debounced, on launch, on
+  foreground, every minute). Then the device pulls everything changed since its last sync.
+- Conflicts: per record, the newest edit wins (by the time the user made it). The server
+  refuses to overwrite a newer row with an older one.
+- Deletes sync as tombstones. Recurring occurrences get deterministic IDs
+  (`<seriesId>:<date>`), so two devices never create duplicates.
+- First sync for an account on a device uploads everything already on that device, so
+  nothing typed before signing in (or while offline) is lost.
+- Signing out uploads pending changes, then clears that account's data from the device.
+- Settings are per-device for now (not synced).
+
 ## Screens (revised 2026-10-02)
 
 - **Home** is just the greeting and the insert bar, centered on screen. The "Bar + Tasks"

@@ -8,4 +8,5 @@ export * from './engine';
 export * from './fallback';
 export * from './plans';
 export * from './account';
+export * from './sync';
 export { Scanner } from './extract';

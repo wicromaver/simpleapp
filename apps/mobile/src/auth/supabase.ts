@@ -1,13 +1,12 @@
-// Supabase client. Only created when the project URL + anon (publishable) key are set via
-// EXPO_PUBLIC_SUPABASE_URL / EXPO_PUBLIC_SUPABASE_ANON_KEY; otherwise the app runs on-device only.
+// Supabase client (project settings in ../config.ts). If they're blank the app runs
+// on-device only.
 import 'react-native-url-polyfill/auto';
 
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { createClient, type SupabaseClient } from '@supabase/supabase-js';
 import { AppState, Platform } from 'react-native';
 
-const url = process.env.EXPO_PUBLIC_SUPABASE_URL;
-const anonKey = process.env.EXPO_PUBLIC_SUPABASE_ANON_KEY;
+import { SUPABASE_ANON_KEY as anonKey, SUPABASE_URL as url } from '../config';
 
 export const supabase: SupabaseClient | null =
   url && anonKey

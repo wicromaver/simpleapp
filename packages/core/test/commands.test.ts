@@ -86,6 +86,16 @@ describe('§4.10 recurring', () => {
     expect(s.find(/Gym/).some((g) => g.date === '2026-10-05')).toBe(true);
   });
 
+  it('occurrence ids are deterministic so two synced devices generate the same records', () => {
+    const s = new Session(makeCtx(WED_2PM));
+    s.say('gym every monday at 6am');
+    const series = s.state.series[0]!;
+    expect(s.state.items.every((i) => i.id === `${series.id}:${i.occurrenceDate}`)).toBe(true);
+    const otherDevice = { ...s.state, items: [] };
+    const ops = refreshSeries(otherDevice, makeCtx(WED_2PM));
+    expect(ops.map((o) => (o.op === 'putItem' ? o.item.id : '')).sort()).toEqual(s.state.items.map((i) => i.id).sort());
+  });
+
   it('refreshSeries extends the rolling window without duplicates', () => {
     const s = new Session(makeCtx(WED_2PM));
     s.say('gym every monday at 6am');

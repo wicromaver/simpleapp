@@ -24,7 +24,8 @@ export function materializeSeries(series: Series, existing: Item[], ctx: EngineC
     // Don't create an occurrence today that has already started.
     if (d === today && series.start && timeToMin(series.start) <= nowMin) continue;
     out.push(newItem({
-      id: ctx.newId(), title: series.title, date: d, start: series.start, end: series.end,
+      // Deterministic id: every device generates the same occurrence, so sync never duplicates it.
+      id: `${series.id}:${d}`, title: series.title, date: d, start: series.start, end: series.end,
       recurring: { days: series.days }, seriesId: series.id, occurrenceDate: d,
     }, ctx.now));
   }

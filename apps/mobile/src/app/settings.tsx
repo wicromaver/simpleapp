@@ -20,15 +20,27 @@ function Row({ label, sub, children, last }: { label: string; sub?: string; chil
   );
 }
 
+function syncLine(lastSyncedAt: Date | null, syncError: string | null): string {
+  if (syncError) return 'Offline — changes will sync when you reconnect.';
+  if (!lastSyncedAt) return 'Not synced yet.';
+  return `Synced at ${lastSyncedAt.toLocaleTimeString(undefined, { hour: 'numeric', minute: '2-digit' })}.`;
+}
+
 function AccountSection() {
   const auth = useAuth();
+  const { lastSyncedAt, syncError, syncNow, clearLocalData } = useStore();
   const [adding, setAdding] = useState(false);
   const prompt = claimPrompt('settings', auth.account, { itemCount: 0, dismissed: [] });
 
   if (!auth.isAnonymous && auth.email) {
+    const signOut = async () => {
+      await syncNow(); // last chance to upload anything pending
+      await auth.signOut();
+      clearLocalData();
+    };
     return (
-      <Row label="Signed in" sub={auth.email}>
-        <Pill label="Sign out" onPress={() => void auth.signOut()} />
+      <Row label="Signed in" sub={`${auth.email}\n${syncLine(lastSyncedAt, syncError)}`}>
+        <Pill label="Sign out" onPress={() => void signOut()} />
       </Row>
     );
   }
@@ -48,7 +60,7 @@ function AccountSection() {
     );
   }
   return (
-    <Row label={prompt.title} sub={prompt.body}>
+    <Row label={prompt.title} sub={auth.available ? `${prompt.body}\n${syncLine(lastSyncedAt, syncError)}` : prompt.body}>
       <Pill label={prompt.primary} onPress={() => setAdding(true)} />
     </Row>
   );
