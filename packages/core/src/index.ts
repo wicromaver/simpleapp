@@ -7,4 +7,5 @@ export * from './parse';
 export * from './engine';
 export * from './fallback';
 export * from './plans';
+export * from './account';
 export { Scanner } from './extract';

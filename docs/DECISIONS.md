@@ -51,8 +51,41 @@ Implementation notes:
   granted manually by setting `pro_until` in the database for testers. Likely approach
   later: Stripe on web plus in-app purchase on iOS/Android, unified with RevenueCat
   (Apple requires in-app purchase for subscriptions bought inside the iOS app).
-- Users sign in to sync across devices and to count AI usage. Sign-up must stay quick:
-  email code or magic link, Sign in with Apple, Google.
+
+## Accounts: invisible until they matter (decided 2026-10-02)
+
+- **First launch silently creates an anonymous Supabase account.** There is no form or
+  sign-up screen. Data is stored on the device for offline use and synced to the backend
+  from the first keystroke. Users never see it as "an account".
+- We ask for an email only at moments where its value is obvious (rules in
+  `packages/core/src/account.ts`):
+  1. **First launch on a device that's still empty.** A dismissible inline note: "Using
+     this on another device? Sign in with your email to bring your schedule here." It
+     disappears once they add something or dismiss it.
+  2. **Turning on Google/Outlook sync, or upgrading to Pro.** Adding an email is required
+     here, because sync and billing need a real identity.
+  3. **A passive "Add email" row in Settings.** It's always there and never pushed.
+- Claiming = attaching an email to the *existing* anonymous account, so the user ID and
+  data stay the same. Sign-in uses an email one-time code. Sign in with Apple and Google
+  can be added later; if we offer Google sign-in on iOS, Apple requires Sign in with
+  Apple too.
+- **Signing an anonymous install into an existing account merges** that install's items
+  into the account (`mergeAnonymousInto`, which drops exact duplicates). Server side,
+  rows are re-owned to the signed-in user and the empty anonymous user is deleted.
+
+Known limits of this design (accepted tradeoffs, with mitigations):
+- **Second device needs the first to be claimed.** A new device gets its own empty
+  anonymous account and can't know who you are. "Sign in to bring your schedule here"
+  only finds data if an email was added on the first device. If the email isn't found,
+  the app explains: "Add your email on your other device (Settings → Add email), then
+  sign in here."
+- **Unclaimed data is tied to that install.** Deleting the app (or clearing browser data
+  on web) before adding an email loses access to that anonymous account. The Settings row
+  is the safety net; we deliberately don't nag.
+- **Abuse of the free AI allowance.** Reinstalling creates a fresh anonymous account with
+  a fresh 100/month. Mitigations: CAPTCHA on anonymous sign-in (Supabase supports
+  Turnstile/hCaptcha), per-device and per-IP rate limits on the AI endpoint, and
+  periodic cleanup of stale anonymous accounts.
 
 ## Behavior decisions
 
