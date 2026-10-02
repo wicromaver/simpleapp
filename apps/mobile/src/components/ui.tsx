@@ -4,19 +4,19 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import Svg, { Circle, Path, Rect } from 'react-native-svg';
 
 import { useStore } from '../state/store';
-import { serif } from '../theme';
+import { font, type Weight } from '../fonts';
 
 export const MAX_WIDTH = 560;
 
 export function T({ children, style, tone = 'text', size = 14, weight, serifFont, numberOfLines }: {
   children: ReactNode; style?: StyleProp<TextStyle>; tone?: 'text' | 'dim' | 'faint' | 'blue' | 'danger';
-  size?: number; weight?: '400' | '500' | '600'; serifFont?: boolean; numberOfLines?: number;
+  size?: number; weight?: Weight; serifFont?: boolean; numberOfLines?: number;
 }) {
   const { palette } = useStore();
   return (
     <Text
       numberOfLines={numberOfLines}
-      style={[{ color: palette[tone], fontSize: size, fontWeight: weight }, serifFont && serif, style]}>
+      style={[{ color: palette[tone], fontSize: size }, font(weight, serifFont), style]}>
       {children}
     </Text>
   );
@@ -74,7 +74,7 @@ export function Pill({ label, onPress, variant = 'default', style }: {
         pressed && { opacity: 0.7 },
         style,
       ]}>
-      <Text style={{ fontSize: 13, color: primary ? palette.onAccent : variant === 'danger' ? palette.danger : palette.text, fontWeight: primary ? '600' : '400' }}>
+      <Text style={[{ fontSize: 13, color: primary ? palette.onAccent : variant === 'danger' ? palette.danger : palette.text }, font(primary ? '600' : '400')]}>
         {label}
       </Text>
     </Pressable>

@@ -33,5 +33,15 @@ npm run ios       # iOS: scan the QR code with Expo Go, or press i for the simul
 npm run build:web # static web build in apps/mobile/dist (deploy anywhere, e.g. Vercel)
 ```
 
-Optional: set `EXPO_PUBLIC_PARSE_FALLBACK_URL` to enable the online AI fallback
-(server endpoint not deployed yet; without it the app uses on-device rules only).
+Optional environment variables (in `apps/mobile/.env`; without them the app runs
+fully on-device, and the welcome screen's "Sign in" explains it isn't set up yet):
+
+```
+EXPO_PUBLIC_SUPABASE_URL=https://<project>.supabase.co
+EXPO_PUBLIC_SUPABASE_ANON_KEY=<anon / publishable key>      # public by design
+EXPO_PUBLIC_PARSE_FALLBACK_URL=<AI fallback endpoint>       # not deployed yet
+```
+
+Supabase setup for sign-in: enable Email and Anonymous sign-ins under Authentication →
+Providers, and put `{{ .Token }}` in the "Magic Link" and "Change Email Address" email
+templates so users get a 6-digit code.

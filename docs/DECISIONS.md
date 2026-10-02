@@ -52,16 +52,18 @@ Implementation notes:
   later: Stripe on web plus in-app purchase on iOS/Android, unified with RevenueCat
   (Apple requires in-app purchase for subscriptions bought inside the iOS app).
 
-## Accounts: invisible until they matter (decided 2026-10-02)
+## Accounts: sign in or skip (revised 2026-10-02)
 
-- **First launch silently creates an anonymous Supabase account.** There is no form or
-  sign-up screen. Data is stored on the device for offline use and synced to the backend
-  from the first keystroke. Users never see it as "an account".
-- We ask for an email only at moments where its value is obvious (rules in
+- **First launch shows a welcome screen with two choices:** "Sign in" (email plus a
+  6-digit code) or "Continue without an account".
+- **Only if they skip** does the app silently create an anonymous Supabase account. Data
+  is stored on the device for offline use and syncs to the backend once sync is built.
+  If the device is offline at that moment, the app keeps working and creates the
+  anonymous account later.
+- After skipping, we ask for an email only where its value is obvious (rules in
   `packages/core/src/account.ts`):
-  1. **First launch on a device that's still empty.** A dismissible inline note: "Using
-     this on another device? Sign in with your email to bring your schedule here." It
-     disappears once they add something or dismiss it.
+  1. ~~The empty-first-launch note~~. Dropped, because the welcome screen already offers
+     sign-in.
   2. **Turning on Google/Outlook sync, or upgrading to Pro.** Adding an email is required
      here, because sync and billing need a real identity.
   3. **A passive "Add email" row in Settings.** It's always there and never pushed.
@@ -86,6 +88,16 @@ Known limits of this design (accepted tradeoffs, with mitigations):
   a fresh 100/month. Mitigations: CAPTCHA on anonymous sign-in (Supabase supports
   Turnstile/hCaptcha), per-device and per-IP rate limits on the AI endpoint, and
   periodic cleanup of stale anonymous accounts.
+
+## Screens (revised 2026-10-02)
+
+- **Home** is just the greeting and the insert bar, centered on screen. The "Bar + Tasks"
+  and "Bar + Calendar" home options were removed.
+- **Tasks** and **Calendar** have the same insert bar at the top, so anything can be added
+  from any tab. Replies show under the bar on whichever tab you're on.
+- **Fonts are bundled with the app** (Inter + Newsreader in `apps/mobile/assets/fonts`,
+  SIL Open Font License). Nothing loads from the internet. Verified with all outside
+  network access blocked.
 
 ## Behavior decisions
 

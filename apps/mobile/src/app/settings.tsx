@@ -1,7 +1,10 @@
 import { claimPrompt, FREE_AI_PARSES_PER_MONTH, PRO_PRICING } from '@simpleapp/core';
+import { useState } from 'react';
 import { Pressable, StyleSheet, View } from 'react-native';
 
-import { Screen, Segmented, SectionLabel, T } from '../components/ui';
+import { useAuth } from '../auth/auth';
+import { EmailCodeForm } from '../components/EmailCodeForm';
+import { Pill, Screen, Segmented, SectionLabel, T } from '../components/ui';
 import { useStore } from '../state/store';
 
 function Row({ label, sub, children, last }: { label: string; sub?: string; children?: React.ReactNode; last?: boolean }) {
@@ -17,26 +20,50 @@ function Row({ label, sub, children, last }: { label: string; sub?: string; chil
   );
 }
 
+function AccountSection() {
+  const auth = useAuth();
+  const [adding, setAdding] = useState(false);
+  const prompt = claimPrompt('settings', auth.account, { itemCount: 0, dismissed: [] });
+
+  if (!auth.isAnonymous && auth.email) {
+    return (
+      <Row label="Signed in" sub={auth.email}>
+        <Pill label="Sign out" onPress={() => void auth.signOut()} />
+      </Row>
+    );
+  }
+  if (!prompt) return null;
+  if (adding) {
+    return (
+      <View style={{ paddingVertical: 14 }}>
+        {auth.available ? (
+          <EmailCodeForm sendCode={auth.sendClaimCode} verifyCode={auth.verifyClaimCode} onCancel={() => setAdding(false)} submitLabel="Send code" />
+        ) : (
+          <>
+            <T size={13} tone="dim">Accounts aren't set up in this build yet. Your schedule is saved on this device.</T>
+            <Pill label="OK" style={{ marginTop: 12 }} onPress={() => setAdding(false)} />
+          </>
+        )}
+      </View>
+    );
+  }
+  return (
+    <Row label={prompt.title} sub={prompt.body}>
+      <Pill label={prompt.primary} onPress={() => setAdding(true)} />
+    </Row>
+  );
+}
+
 export default function Settings() {
   const { settings, setSettings, palette } = useStore();
   const toggleAlert = (m: number) => {
     const has = settings.eventAlerts.includes(m);
     setSettings({ eventAlerts: has ? settings.eventAlerts.filter((x) => x !== m) : [...settings.eventAlerts, m].sort((a, b) => a - b) });
   };
-  const addEmail = claimPrompt('settings', { isAnonymous: true, email: null }, { itemCount: 0, dismissed: [] });
 
   return (
     <Screen>
       <T size={22} weight="500" serifFont style={{ marginTop: 10, marginBottom: 18 }}>Settings</T>
-
-      <View style={styles.group}>
-        <SectionLabel>Home screen shows</SectionLabel>
-        <Segmented
-          value={settings.homeMode}
-          onChange={(homeMode) => setSettings({ homeMode })}
-          options={[{ label: 'Just the bar', value: 'bar' }, { label: 'Bar + Tasks', value: 'tasks' }, { label: 'Bar + Calendar', value: 'calendar' }]}
-        />
-      </View>
 
       <View style={styles.group}>
         <SectionLabel>Appearance</SectionLabel>
@@ -95,7 +122,7 @@ export default function Settings() {
 
       <View style={styles.group}>
         <SectionLabel>Account</SectionLabel>
-        {addEmail && <Row label={addEmail.title} sub={`${addEmail.body} (Coming soon.)`} />}
+        <AccountSection />
         <Row
           label="Plan: Free"
           sub={`Everything on this device, plus ${FREE_AI_PARSES_PER_MONTH} AI-assisted entries a month. Pro ($${PRO_PRICING.monthly.perMonth}/mo, or $${PRO_PRICING.annual.perMonth}/mo yearly) adds Google/Outlook sync and unlimited AI.`}

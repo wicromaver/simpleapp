@@ -5,6 +5,7 @@ import { useState } from 'react';
 import { KeyboardAvoidingView, Modal, Platform, Pressable, StyleSheet, TextInput, View } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
+import { font } from '../fonts';
 import { useStore } from '../state/store';
 import { PickerField } from './PickerField';
 import { MAX_WIDTH, Pill, T } from './ui';
@@ -38,7 +39,7 @@ function SheetBody({ item }: { item: Item }) {
   const [start, setStart] = useState(item.start ?? '');
   const [end, setEnd] = useState(item.end ?? '');
 
-  const input = [styles.input, { backgroundColor: palette.raised2, borderColor: palette.border, color: palette.text }];
+  const input = [styles.input, font(), { backgroundColor: palette.raised2, borderColor: palette.border, color: palette.text }];
 
   return (
     // Stop taps inside the card from closing the sheet.

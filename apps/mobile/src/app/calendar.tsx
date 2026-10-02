@@ -1,4 +1,5 @@
 import { CalendarHeader, DayView, MonthView, WeekView } from '../components/Calendar';
+import { InsertBar } from '../components/InsertBar';
 import { Screen } from '../components/ui';
 import { useStore } from '../state/store';
 
@@ -6,6 +7,7 @@ export default function Calendar() {
   const { calView, viewDate } = useStore();
   return (
     <Screen scroll={calView !== 'day'}>
+      <InsertBar hint={false} />
       <CalendarHeader />
       {calView === 'day' && <DayView date={viewDate} />}
       {calView === 'week' && <WeekView date={viewDate} />}

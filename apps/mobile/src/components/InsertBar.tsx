@@ -1,18 +1,21 @@
+import { usePathname } from 'expo-router';
 import { useState } from 'react';
 import { ActivityIndicator, Pressable, StyleSheet, TextInput, View } from 'react-native';
 
+import { font } from '../fonts';
 import { useStore, type Message } from '../state/store';
 import { Icon, Pill, T } from './ui';
 
-export function InsertBar() {
-  const { palette, submit, busy } = useStore();
+/** The type-anything bar plus its reply area. Same bar on Home, Tasks and Calendar. */
+export function InsertBar({ hint = true }: { hint?: boolean }) {
+  const { palette, submit, busy, message } = useStore();
   const [text, setText] = useState('');
 
   const send = () => {
     const t = text.trim();
     if (!t) return;
     setText('');
-    void submit(t, 'home');
+    void submit(t);
   };
 
   return (
@@ -29,30 +32,38 @@ export function InsertBar() {
           submitBehavior="submit"
           autoCorrect={false}
           accessibilityLabel="Add a task, reminder or event"
-          style={[styles.input, { color: palette.text }]}
+          style={[styles.input, font(), { color: palette.text }]}
         />
         {busy && <ActivityIndicator size="small" color={palette.faint} />}
       </View>
-      <T size={12} tone="faint" style={styles.hint}>Type a task, a note, or a time — it'll sort itself out.</T>
+      {hint ? (
+        <T size={12} tone="faint" style={styles.hint}>Type a task, a note, or a time — it'll sort itself out.</T>
+      ) : <View style={{ height: 12 }} />}
+      {message && <SystemMessage message={message} />}
     </View>
   );
 }
 
 /** Confirmation / question shown under the bar, with choices and a jump link. */
-export function SystemMessage({ message, compact }: { message: Message; compact?: boolean }) {
-  const { choose, jump, palette, dismissMessage } = useStore();
+export function SystemMessage({ message }: { message: Message }) {
+  const { choose, jump, palette, dismissMessage, viewDate, calView } = useStore();
+  const pathname = usePathname();
+  const j = message.jump;
+  // No "View in Tasks" link when you're already looking at it.
+  const alreadyThere = !!j && ((j.tab === 'tasks' && pathname === '/tasks')
+    || (j.tab === 'calendar' && pathname === '/calendar' && calView === 'day' && j.date === viewDate));
   return (
-    <View style={[styles.msg, compact && styles.msgCompact]}>
+    <View style={styles.msg}>
       <View style={styles.msgRow}>
         <T size={13.5} tone="dim" style={{ flex: 1, lineHeight: 20 }}>{message.text}</T>
         <Pressable accessibilityLabel="Dismiss" hitSlop={10} onPress={dismissMessage}>
           <Icon name="close" color={palette.faint} size={14} />
         </Pressable>
       </View>
-      {message.jump && (
-        <Pressable onPress={() => jump(message.jump!)}>
+      {j && !alreadyThere && (
+        <Pressable onPress={() => jump(j)}>
           <T size={13} tone="blue" style={styles.jump}>
-            {message.jump.tab === 'tasks' ? 'View in Tasks →' : 'View on Calendar →'}
+            {j.tab === 'tasks' ? 'View in Tasks →' : 'View on Calendar →'}
           </T>
         </Pressable>
       )}
@@ -72,7 +83,6 @@ const styles = StyleSheet.create({
   input: { flex: 1, fontSize: 15, paddingVertical: 14, outlineStyle: 'none' } as object,
   hint: { marginTop: 10, marginHorizontal: 4, marginBottom: 18, lineHeight: 18 },
   msg: { paddingHorizontal: 2, paddingBottom: 14, marginBottom: 6 },
-  msgCompact: { paddingBottom: 0, marginBottom: 0 },
   msgRow: { flexDirection: 'row', gap: 10, alignItems: 'flex-start' },
   jump: { marginTop: 6, textDecorationLine: 'underline' },
   choices: { flexDirection: 'row', flexWrap: 'wrap', gap: 8, marginTop: 10 },

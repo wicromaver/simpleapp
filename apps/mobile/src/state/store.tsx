@@ -13,19 +13,16 @@ import { useColorScheme } from 'react-native';
 import { fetchFallbackIntent, isFallbackConfigured } from './fallbackClient';
 import { palettes, type Palette } from '../theme';
 
-export type HomeMode = 'bar' | 'tasks' | 'calendar';
 export type CalView = 'day' | 'week' | 'month';
 
 export interface Settings extends CoreSettings {
   theme: 'system' | 'dark' | 'light';
-  homeMode: HomeMode;
   colorCode: boolean;
   hideCompletedNextDay: boolean;
 }
 
 export const DEFAULT_SETTINGS: Settings = {
   theme: 'system',
-  homeMode: 'tasks',
   defaultDuration: 30,
   eventAlerts: [15],
   colorCode: true,
@@ -45,8 +42,6 @@ export interface Message {
   text: string;
   choices: Choice[];
   jump: Jump | null;
-  /** Where it was triggered: Home shows it inline, other tabs show it as a floating card. */
-  origin: 'home' | 'elsewhere';
 }
 
 const STORAGE_KEY = 'simpleapp:v1';
@@ -103,7 +98,8 @@ function useStoreValue() {
           const loadedState: EngineState = { items: p.items ?? [], series: p.series ?? [], pending: null };
           const c: EngineContext = { now: new Date(), settings: { ...DEFAULT_SETTINGS, ...p.settings }, newId };
           setEngine(applyOps(loadedState, refreshSeries(loadedState, c)));
-          setSettingsState({ ...DEFAULT_SETTINGS, ...p.settings });
+          const { homeMode: _dropped, ...saved } = p.settings as Settings & { homeMode?: unknown };
+          setSettingsState({ ...DEFAULT_SETTINGS, ...saved });
           setDismissed(p.dismissed ?? []);
         }
       } catch {
@@ -124,47 +120,40 @@ function useStoreValue() {
     return () => clearTimeout(t);
   }, [loaded, engine.items, engine.series, settings, dismissed]);
 
-  // Confirmations raised outside Home fade on their own; questions (with choices) stay.
-  useEffect(() => {
-    if (!message || message.origin === 'home' || message.choices.length) return;
-    const t = setTimeout(() => setMessage((m) => (m?.id === message.id ? null : m)), 6000);
-    return () => clearTimeout(t);
-  }, [message]);
-
-  const apply = useCallback((o: Outcome, origin: Message['origin']) => {
+  const apply = useCallback((o: Outcome) => {
     setEngine((s) => ({ ...applyOps(s, o.ops), pending: o.pending }));
-    setMessage(o.message ? { id: ++msgSeq.current, text: o.message, choices: o.choices, jump: o.jump, origin } : null);
+    setMessage(o.message ? { id: ++msgSeq.current, text: o.message, choices: o.choices, jump: o.jump } : null);
   }, []);
 
-  const submit = useCallback(async (text: string, origin: Message['origin'] = 'home') => {
+  const submit = useCallback(async (text: string) => {
     setBusy(true);
     try {
       const o = await handleInputWithFallback(engineRef.current, text, ctx(), {
         online: isFallbackConfigured(),
         fetchIntent: fetchFallbackIntent,
       });
-      apply(o, origin);
+      apply(o);
     } finally {
       setBusy(false);
     }
   }, [apply, ctx]);
 
-  const choose = useCallback((c: Choice) => submit(c.reply, message?.origin ?? 'home'), [submit, message]);
+  const choose = useCallback((c: Choice) => submit(c.reply), [submit]);
 
   const dismissMessage = useCallback(() => {
     setMessage(null);
     setEngine((s) => ({ ...s, pending: null }));
   }, []);
 
-  const toggle = useCallback((id: string) => apply(toggleTask(engineRef.current, id, ctx()), 'elsewhere'), [apply, ctx]);
+  const toggle = useCallback((id: string) => apply(toggleTask(engineRef.current, id, ctx())), [apply, ctx]);
 
   const saveEdit = useCallback((id: string, fields: EditFields) => {
-    apply(applyEdit(engineRef.current, id, fields, ctx()), 'elsewhere');
+    apply(applyEdit(engineRef.current, id, fields, ctx()));
     setEditingId(null);
   }, [apply, ctx]);
 
   const deleteItem = useCallback((id: string) => {
-    apply(requestDelete(engineRef.current, id, ctx()), 'elsewhere');
+    apply(requestDelete(engineRef.current, id, ctx()));
     setEditingId(null);
   }, [apply, ctx]);
 

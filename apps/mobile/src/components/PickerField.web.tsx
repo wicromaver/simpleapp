@@ -10,7 +10,7 @@ export function PickerField({ mode, value, onChange, placeholder }: PickerFieldP
   const { palette, scheme } = useStore();
   const input: CSSProperties = {
     flex: 1, background: 'transparent', border: 'none', outline: 'none', color: value ? palette.text : palette.faint,
-    fontSize: 14, padding: '10px 0', fontFamily: '-apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif', colorScheme: scheme, minWidth: 0,
+    fontSize: 14, padding: '10px 0', fontFamily: 'Inter-Regular, system-ui, sans-serif', colorScheme: scheme, minWidth: 0,
   };
   return (
     <View style={[styles.field, { backgroundColor: palette.raised2, borderColor: palette.border }]}>
