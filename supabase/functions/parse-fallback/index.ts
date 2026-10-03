@@ -18,6 +18,8 @@ import { createClient } from 'npm:@supabase/supabase-js@2.117.2';
 const FREE_AI_PARSES_PER_MONTH = 100;
 const MODEL = Deno.env.get('FALLBACK_MODEL') ?? 'claude-opus-5-5';
 const MAX_TEXT = 300;
+// Haiku 4.5 rejects the effort setting and the "default" fallback mode; newer models take both.
+const SUPPORTS_EFFORT_AND_FALLBACKS = /^claude-(opus-5|fable-5|sonnet-5-5)/.test(MODEL);
 
 const anthropic = new Anthropic({
   apiKey: Deno.env.get('ANTHROPIC_API_KEY'),
@@ -200,17 +202,23 @@ Deno.serve(async (req) => {
 
   // 3. Ask Claude for the intent, constrained to the schema.
   try {
-    const response = await anthropic.beta.messages.create({
+    const format = { type: 'json_schema' as const, schema: INTENT_SCHEMA };
+    const request = {
       model: MODEL,
       max_tokens: 4_000,
-      // Short, well-specified task: low effort keeps latency and cost down.
-      output_config: { effort: 'low', format: { type: 'json_schema', schema: INTENT_SCHEMA } },
-      // If the model declines, the API retries on a suitable fallback model in the same call.
-      betas: ['server-side-fallback-2026-07-01'],
-      fallbacks: 'default',
       system: systemPrompt(localNow(nowIso, tz)),
-      messages: [{ role: 'user', content: text }],
-    });
+      messages: [{ role: 'user' as const, content: text }],
+    };
+    const response = SUPPORTS_EFFORT_AND_FALLBACKS
+      ? await anthropic.beta.messages.create({
+          ...request,
+          // Short, well-specified task: low effort keeps latency and cost down.
+          output_config: { effort: 'low', format },
+          // If the model declines, the API retries on a suitable fallback model in the same call.
+          betas: ['server-side-fallback-2026-07-01'],
+          fallbacks: 'default',
+        })
+      : await anthropic.beta.messages.create({ ...request, output_config: { format } });
 
     if (response.stop_reason === 'refusal' || response.stop_reason === 'max_tokens') {
       await admin.rpc('refund_ai_parse', { p_user: userId });
