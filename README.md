@@ -42,4 +42,5 @@ fully offline either way; sync catches up when it can.
 
 One-time project setup: see [`supabase/README.md`](supabase/README.md).
 
-`EXPO_PUBLIC_PARSE_FALLBACK_URL` enables the online AI fallback (endpoint not deployed yet).
+The online AI fallback is the `parse-fallback` edge function in `supabase/functions`
+(setup steps 5–7 in `supabase/README.md`). `EXPO_PUBLIC_PARSE_FALLBACK_URL` overrides its URL.

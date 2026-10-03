@@ -28,6 +28,19 @@ remain the behavioral reference; where they disagree with this file, this file w
   applies it with the same engine, so every spec rule (rollover, meal hints, conflicts,
   least-booked day, …) holds regardless of who understood the text.
 
+## AI fallback service (built 2026-10-03)
+
+- `supabase/functions/parse-fallback`: verifies the caller's session (anonymous counts),
+  atomically spends one parse from the monthly allowance (`consume_ai_parse`: Free 100 per
+  UTC calendar month, Pro unlimited), asks Claude for the Intent JSON under a strict JSON
+  schema, and refunds the parse if the model call fails. The prompt and schema live
+  server-side, so they can be improved without an app update.
+- Model: `claude-opus-5-5` at low effort by default, switchable with the `FALLBACK_MODEL`
+  secret. Server-side refusal fallback is on.
+- The app waits up to 4s, and only for inputs the rules were unsure about. Offline, a
+  slow response, an error, an invalid answer, or "allowance used up" all mean the rule
+  result is used. After a "used up" answer the app stops calling until next month.
+
 ## Plans: Free and Pro (revised 2026-10-01, replaces the 7-day trial)
 
 **Free:** no time limit, no card.

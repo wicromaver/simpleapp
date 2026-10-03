@@ -14,7 +14,7 @@ import { AppState, useColorScheme } from 'react-native';
 import { supabase } from '../auth/supabase';
 import { currentUserId, pull, push } from './syncClient';
 
-import { fetchFallbackIntent, isFallbackConfigured } from './fallbackClient';
+import { aiAllowed, fetchFallbackIntent, isFallbackConfigured } from './fallbackClient';
 import { palettes, type Palette } from '../theme';
 
 export type CalView = 'day' | 'week' | 'month';
@@ -232,7 +232,9 @@ function useStoreValue() {
     setBusy(true);
     try {
       const o = await handleInputWithFallback(engineRef.current, text, ctx(), {
+        // If the device is actually offline the request fails fast and the rule result is used.
         online: isFallbackConfigured(),
+        aiAllowed: aiAllowed(new Date()),
         fetchIntent: fetchFallbackIntent,
       });
       apply(o);

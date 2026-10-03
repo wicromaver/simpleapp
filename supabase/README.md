@@ -13,6 +13,21 @@
    hour, which is fine for testing. For launch, add your own SMTP (Authentication → Emails
    → SMTP Settings; Resend or Postmark both work) and turn on CAPTCHA for sign-ins.
 
+## AI fallback (optional, but needed for AI-assisted entries)
+
+5. **Allowance functions.** SQL Editor → run
+   [`migrations/20261003000000_ai_quota.sql`](migrations/20261003000000_ai_quota.sql).
+6. **Your Anthropic key.** Edge Functions → Secrets → add `ANTHROPIC_API_KEY` with your key
+   from console.anthropic.com. Optionally add `FALLBACK_MODEL` (default `claude-opus-5-5`;
+   `claude-haiku-4-5` is cheaper and faster).
+7. **Deploy the function.** Edge Functions → Deploy a new function → Via Editor → name it
+   exactly `parse-fallback` → replace the sample code with the contents of
+   [`functions/parse-fallback/index.ts`](functions/parse-fallback/index.ts) → Deploy.
+   (With the Supabase CLI instead: `supabase functions deploy parse-fallback`.)
+
+The app finds it automatically at `<project>/functions/v1/parse-fallback`. Until it's
+deployed, the app simply uses its on-device rules.
+
 Never put the **secret / service-role key** in the app or this repo. Only the
 publishable key belongs in the client.
 

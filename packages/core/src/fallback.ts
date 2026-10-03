@@ -6,28 +6,14 @@
 // here and then applied by the same engine, so all behavioral rules still hold.
 //
 // This module never touches the network itself — the caller injects `fetchIntent`.
+// The model's instructions and output schema live server-side in
+// supabase/functions/parse-fallback.
 
-import { fmtDate, DOW } from './dates';
 import { applyIntent, handleInput } from './engine';
 import type { Draft, EngineContext, EngineState, Intent, MoveDest, Outcome, RawTime } from './types';
 
-export const FALLBACK_TIMEOUT_MS = 2500;
-
-/** Instructions for the model behind the fallback endpoint. */
-export function fallbackSystemPrompt(now: Date): string {
-  return [
-    'You convert one line a user typed into a minimal scheduling app into a JSON intent.',
-    `Today is ${DOW[now.getDay()]} ${fmtDate(now)}; local time ${now.toTimeString().slice(0, 5)}. Weeks start on Sunday.`,
-    'Return ONLY JSON matching one of:',
-    '{"type":"create","draft":{"title":string,"date":"YYYY-MM-DD"|null,"start":Time|null,"end":Time|null,"durationMin":number|null,"window":{"start":"YYYY-MM-DD","end":"YYYY-MM-DD","label":string}|null,"recurrence":{"days":[0-6...],"label":string}|null,"hint":"am"|"pm"|null}}',
-    '{"type":"move","query":string,"strict":true,"dest":{"shiftMin":number|null,"date":"YYYY-MM-DD"|null,"start":Time|null,"end":Time|null,"window":null}}',
-    '{"type":"cancel","query":string,"onDate":"YYYY-MM-DD"|null}',
-    '{"type":"complete","query":string}',
-    'Time is {"h":1-12,"m":0-59,"meridiem":"am"|"pm"|null}. Use meridiem null when the user did not make am/pm clear — the app resolves it.',
-    'Title: the thing itself, without date/time words. date null and start null => an undated task.',
-    'A vague deadline ("sometime next week") is a window, not a date.',
-  ].join('\n');
-}
+/** How long the app waits for the AI before using the rule result (only for unsure inputs). */
+export const FALLBACK_TIMEOUT_MS = 4000;
 
 const isObj = (v: unknown): v is Record<string, unknown> => typeof v === 'object' && v !== null && !Array.isArray(v);
 const isDate = (v: unknown): v is string => typeof v === 'string' && /^\d{4}-\d{2}-\d{2}$/.test(v) && !isNaN(Date.parse(v));
