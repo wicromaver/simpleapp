@@ -41,6 +41,23 @@ remain the behavioral reference; where they disagree with this file, this file w
   slow response, an error, an invalid answer, or "allowance used up" all mean the rule
   result is used. After a "used up" answer the app stops calling until next month.
 
+## Notifications (built 2026-10-03)
+
+- Local notifications scheduled on the phone (expo-notifications), so they fire offline
+  and need no server. Reminders fire at their reminder time (6am, or 90 minutes after a
+  late add). Events fire at each lead time chosen in Settings (15 min / 30 min / 1 hr,
+  any combination).
+- The plan comes from core (`planNotifications`): the soonest 60 within 14 days (iOS
+  allows 64 pending). It's rescheduled whenever items or settings change, and rolls
+  forward as the app is used.
+- Permission is requested the first time there's something to notify about, not at launch.
+  If it's denied, Settings says how to turn it back on.
+- Tapping a notification opens that day on the calendar.
+- Web doesn't schedule notifications (browsers can't deliver them with the page closed);
+  Settings says so.
+- Testing needs a phone: Expo Go supports local notifications, and a development build
+  is needed for store-ready behaviour.
+
 ## Plans: Free and Pro (revised 2026-10-01, replaces the 7-day trial)
 
 **Free:** no time limit, no card.

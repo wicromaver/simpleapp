@@ -9,4 +9,5 @@ export * from './fallback';
 export * from './plans';
 export * from './account';
 export * from './sync';
+export * from './notifications';
 export { Scanner } from './extract';

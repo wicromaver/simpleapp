@@ -1,6 +1,6 @@
 import { claimPrompt, FREE_AI_PARSES_PER_MONTH, PRO_PRICING } from '@simpleapp/core';
 import { useState } from 'react';
-import { Pressable, StyleSheet, View } from 'react-native';
+import { Platform, Pressable, StyleSheet, View } from 'react-native';
 
 import { useAuth } from '../auth/auth';
 import { EmailCodeForm } from '../components/EmailCodeForm';
@@ -67,7 +67,7 @@ function AccountSection() {
 }
 
 export default function Settings() {
-  const { settings, setSettings, palette } = useStore();
+  const { settings, setSettings, palette, notificationPermission } = useStore();
   const toggleAlert = (m: number) => {
     const has = settings.eventAlerts.includes(m);
     setSettings({ eventAlerts: has ? settings.eventAlerts.filter((x) => x !== m) : [...settings.eventAlerts, m].sort((a, b) => a - b) });
@@ -112,6 +112,11 @@ export default function Settings() {
             );
           })}
         </View>
+        {Platform.OS === 'web' ? (
+          <T size={12} tone="faint" style={{ marginTop: 8 }}>Alerts and reminders are delivered by the phone app.</T>
+        ) : notificationPermission === 'denied' ? (
+          <T size={12} tone="danger" style={{ marginTop: 8 }}>Notifications are turned off for this app. Turn them on in your phone's Settings to get alerts.</T>
+        ) : null}
       </View>
 
       <View style={styles.group}>

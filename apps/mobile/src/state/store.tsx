@@ -13,6 +13,7 @@ import { AppState, useColorScheme } from 'react-native';
 
 import { supabase } from '../auth/supabase';
 import { currentUserId, pull, push } from './syncClient';
+import { useNotifications } from './useNotifications';
 
 import { aiAllowed, fetchFallbackIntent, isFallbackConfigured } from './fallbackClient';
 import { palettes, type Palette } from '../theme';
@@ -271,6 +272,8 @@ function useStoreValue() {
     setPendingTab(j.tab);
   }, []);
 
+  const notificationPermission = useNotifications(engine.items, settings, now, jump);
+
   const setSettings = useCallback((patch: Partial<Settings>) => setSettingsState((s) => ({ ...s, ...patch })), []);
   const dismissClaim = useCallback((m: ClaimMoment) => setDismissed((d) => (d.includes(m) ? d : [...d, m])), []);
 
@@ -280,6 +283,7 @@ function useStoreValue() {
   return {
     loaded, now, engine, settings, palette, scheme, message, busy, calView, viewDate, editingId, dismissed, pendingTab,
     lastSyncedAt, syncError, syncNow, clearLocalData,
+    notificationPermission,
     submit, choose, dismissMessage, toggle, saveEdit, deleteItem, jump, setSettings, dismissClaim,
     setCalView, setViewDate, setEditingId, clearPendingTab: () => setPendingTab(null),
   };
